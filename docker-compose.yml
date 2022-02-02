@@ -1,0 +1,14 @@
+version: '3.4'
+services:
+  cardboard:
+    image: registry.robinsmediateam.dev/cardboard:latest
+    restart: always
+    environment:
+      - KeyFileLocation=robinsmediateam-sepay-x5.pem
+      - MijnSepayUsername=example@example.com
+      - SID=1234567
+      - PinPaymentTypeID=7
+      - SQLAddress="127.0.0.1\ARONIUM"
+      - SQLDatabase=aroniumdb
+      - SQLUsername=username
+      - SQLPassword="password"
