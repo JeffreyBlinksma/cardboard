@@ -13,7 +13,7 @@ RUN \
   #
   # Install pyodbc db drivers for MSSQL, PG and MySQL
   curl https://packages.microsoft.com/keys/microsoft.asc | apt-key add - && \
-  curl https://packages.microsoft.com/config/debian/9/prod.list > /etc/apt/sources.list.d/mssql-release.list && \
+  curl https://packages.microsoft.com/config/debian/1/prod.list > /etc/apt/sources.list.d/mssql-release.list && \
 #  curl -L -o ${MYSQL_CONNECTOR}.tar.gz https://dev.mysql.com/get/Downloads/Connector-ODBC/8.0/${MYSQL_CONNECTOR}.tar.gz && \
 #  curl -L -o ${MYSQL_CONNECTOR}.tar.gz.asc https://downloads.mysql.com/archives/gpg/\?file\=${MYSQL_CONNECTOR}.tar.gz\&p\=10 && \
 #  gpg --verify ${MYSQL_CONNECTOR}.tar.gz.asc && \
