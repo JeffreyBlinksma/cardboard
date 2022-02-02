@@ -9,7 +9,7 @@ RUN \
   export MYSQL_CONNECTOR_CHECKSUM='003a5e45830f103fa303743179e20fb6' && \
   apt-get update && \
   apt-get install -y curl build-essential unixodbc-dev g++ apt-transport-https && \
-  gpg --keyserver hkp://keys.gnupg.net --recv-keys 5072E1F5 && \
+  gpg --keyserver hkps://pgp.mit.eu --recv-keys 5072E1F5 && \
   #
   # Install pyodbc db drivers for MSSQL, PG and MySQL
   curl https://packages.microsoft.com/keys/microsoft.asc | apt-key add - && \
