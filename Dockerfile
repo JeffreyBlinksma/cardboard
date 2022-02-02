@@ -19,7 +19,7 @@ RUN \
 #  gpg --verify ${MYSQL_CONNECTOR}.tar.gz.asc && \
 #  echo "${MYSQL_CONNECTOR_CHECKSUM} ${MYSQL_CONNECTOR}.tar.gz" | md5sum -c - && \
   wget http://ftp.debian.org/debian/pool/main/g/glibc/multiarch-support_2.28-10_amd64.deb &&\
-  apt-get install .\multiarch-support_2.28-10_amd64.deb &&\
+  apt-get install ./multiarch-support_2.28-10_amd64.deb &&\
   apt-get update && \
 #  gunzip ${MYSQL_CONNECTOR}.tar.gz && tar xvf ${MYSQL_CONNECTOR}.tar && \
 #  cp ${MYSQL_CONNECTOR}/bin/* /usr/local/bin && cp ${MYSQL_CONNECTOR}/lib/* /usr/local/lib && \
