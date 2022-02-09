@@ -43,6 +43,6 @@ WORKDIR /app
 # Add your source files.
 COPY main.py .
 # Install dependencies
-RUN pip install pyOpenSSL zeep
+RUN pip install pyOpenSSL zeep pymsteams[async]
 
 CMD ["python", "main.py"]

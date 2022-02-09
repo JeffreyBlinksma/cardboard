@@ -7,6 +7,8 @@ import random
 from zeep import Client
 import os
 import logging.config
+import pymsteams
+import asyncio
 
 # Set variables
 StoredID = 0
@@ -45,6 +47,16 @@ if os.environ['DEBUG'] == True:
         }
     })
 
+# Import MS Teams Logging
+if os.environ['LoggingService'] == 'msteams':
+    loopteamsrequest = asyncio.get_event_loop()
+    msteamsrequest = pymsteams.async_connectorcard(os.environ['TeamsURL'])
+    msteamsrequest.color('0798D0')
+
+    loopteamsresponse = asyncio.get_event_loop()
+    msteamsresponse = pymsteams.async_connectorcard(os.environ['TeamsURL'])
+    msteamsresponse.color('0798D0')
+
 server = os.environ['SQLServer']
 database = os.environ['SQLDatabase']
 username = os.environ['SQLUser']
@@ -74,6 +86,15 @@ while True:
                 # Generate TransactionRef
                 TransactionRef = ''.join(random.choices(string.ascii_uppercase + string.digits, k=9))
 
+                # Notify of transaction in Teams
+                msteamsrequest.title('Nieuwe transactie: ' + TransactionRef)
+                msteamsrequest.text("**Login: **"+os.environ['SepayLogin']+"<br />\
+                    **SID: **"+os.environ['SID']+"<br />\
+                    **Login: **"+os.environ['SepayLogin']+"<br />\
+                    **Referentie: **"+os.environ['TransactionRef']+"<br />\
+                    **Document: **"+str(row[0])+"<br />\
+                    **Bedrag: **"+ConvertedAmount)
+                loopteamsrequest.run_until_complete(msteamsrequest.send())
                 # Create Signature
                 SignatureData = f"0;2;{os.environ['SepayLogin']};{str(os.environ['SID'])};{TransactionRef};{str(row[0])};{ConvertedAmount};"
                 SignatureSign = crypto.sign(pkey, SignatureData, "sha256")
@@ -86,21 +107,76 @@ while True:
                         break
                     case 1:
                         print("Some of the required fields are missing: "+ RequestResult['message'])
+                        msteamsresponse.title('Mislukte transactie: ' + TransactionRef)
+                        msteamsresponse.text("**Login: **"+os.environ['SepayLogin']+"<br />\
+                            **SID: **"+os.environ['SID']+"<br />\
+                            **Login: **"+os.environ['SepayLogin']+"<br />\
+                            **Referentie: **"+os.environ['TransactionRef']+"<br />\
+                            **Document: **"+str(row[0])+"<br />\
+                            **Foutcode: **"+RequestResult['status'])+"<br />\
+                            **Foutmelding: **"+RequestResult['message']
+                        loopteamsresponse.run_until_complete(msteamsresponse.send())
                         break
                     case 2:
                         print("Signature failed")
+                        msteamsresponse.title('Mislukte transactie: ' + TransactionRef)
+                        msteamsresponse.text("**Login: **"+os.environ['SepayLogin']+"<br />\
+                            **SID: **"+os.environ['SID']+"<br />\
+                            **Login: **"+os.environ['SepayLogin']+"<br />\
+                            **Referentie: **"+os.environ['TransactionRef']+"<br />\
+                            **Document: **"+str(row[0])+"<br />\
+                            **Foutcode: **"+RequestResult['status'])+"<br />\
+                            **Foutmelding: **"+RequestResult['message']
+                        loopteamsresponse.run_until_complete(msteamsresponse.send())
                         break
                     case 4:
+                        print("Invalid parameters, retrying...")
                         continue
                     case 6:
                         print("Duplicate request")
+                        msteamsresponse.title('Mislukte transactie: ' + TransactionRef)
+                        msteamsresponse.text("**Login: **"+os.environ['SepayLogin']+"<br />\
+                            **SID: **"+os.environ['SID']+"<br />\
+                            **Login: **"+os.environ['SepayLogin']+"<br />\
+                            **Referentie: **"+os.environ['TransactionRef']+"<br />\
+                            **Document: **"+str(row[0])+"<br />\
+                            **Foutcode: **"+RequestResult['status'])+"<br />\
+                            **Foutmelding: **"+RequestResult['message']
+                        loopteamsresponse.run_until_complete(msteamsresponse.send())
                         break
                     case 7:
                         print("Terminal not active or not enabled and/or authorized for transactions through WECR")
+                        msteamsresponse.title('Mislukte transactie: ' + TransactionRef)
+                        msteamsresponse.text("**Login: **"+os.environ['SepayLogin']+"<br />\
+                            **SID: **"+os.environ['SID']+"<br />\
+                            **Login: **"+os.environ['SepayLogin']+"<br />\
+                            **Referentie: **"+os.environ['TransactionRef']+"<br />\
+                            **Document: **"+str(row[0])+"<br />\
+                            **Foutcode: **"+RequestResult['status'])+"<br />\
+                            **Foutmelding: **"+RequestResult['message']
+                        loopteamsresponse.run_until_complete(msteamsresponse.send())
                         break
                     case 11:
                         print("Pending request for this terminal.")
+                        msteamsresponse.title('Mislukte transactie: ' + TransactionRef)
+                        msteamsresponse.text("**Login: **"+os.environ['SepayLogin']+"<br />\
+                            **SID: **"+os.environ['SID']+"<br />\
+                            **Login: **"+os.environ['SepayLogin']+"<br />\
+                            **Referentie: **"+os.environ['TransactionRef']+"<br />\
+                            **Document: **"+str(row[0])+"<br />\
+                            **Foutcode: **"+RequestResult['status'])+"<br />\
+                            **Foutmelding: **"+RequestResult['message']
+                        loopteamsresponse.run_until_complete(msteamsresponse.send())
                         break
                     case 99:
                         print("Undefined error")
+                        msteamsresponse.title('Mislukte transactie: ' + TransactionRef)
+                        msteamsresponse.text("**Login: **"+os.environ['SepayLogin']+"<br />\
+                            **SID: **"+os.environ['SID']+"<br />\
+                            **Login: **"+os.environ['SepayLogin']+"<br />\
+                            **Referentie: **"+os.environ['TransactionRef']+"<br />\
+                            **Document: **"+str(row[0])+"<br />\
+                            **Foutcode: **"+RequestResult['status'])+"<br />\
+                            **Foutmelding: **"+RequestResult['message']
+                        loopteamsresponse.run_until_complete(msteamsresponse.send())
                         break
