@@ -30,6 +30,7 @@ RUN \
   mv -f /tmp/temp.ini /etc/odbcinst.ini && \
   # Install dependencies
   pip install --upgrade pip && \
+  pip install pyodbc==4.0.32 && \
   # Cleanup build dependencies
   rm -rf ${MYSQL_CONNECTOR}* && \
   apt-get remove -y curl apt-transport-https debconf-utils g++ gcc rsync unixodbc-dev build-essential gnupg2 wget && \
