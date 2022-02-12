@@ -1,6 +1,4 @@
-FROM python:3.10.2-slim AS base
-
-COPY requirements.txt .
+FROM python:3.10.2-slim@sha256:42d13fdfccf5d97bd23f9c054f22bde0451a3da0a7bb518bcd95fec6be89b50d
 
 # Setup dependencies for pyodbc
 RUN \
@@ -32,7 +30,6 @@ RUN \
   mv -f /tmp/temp.ini /etc/odbcinst.ini && \
   # Install dependencies
   pip install --upgrade pip && \
-  pip install -r requirements.txt && rm requirements.txt && \
   # Cleanup build dependencies
   rm -rf ${MYSQL_CONNECTOR}* && \
   apt-get remove -y curl apt-transport-https debconf-utils g++ gcc rsync unixodbc-dev build-essential gnupg2 wget && \
@@ -40,9 +37,10 @@ RUN \
 
 WORKDIR /app
 
-# Add your source files.
-COPY main.py .
+COPY requirements.txt .
 # Install dependencies
-RUN pip install pyOpenSSL zeep pymsteams[async]
+RUN pip install -r requirements.txt
+
+COPY main.py .
 
 CMD ["python", "main.py"]
