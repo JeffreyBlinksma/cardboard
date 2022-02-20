@@ -11,6 +11,7 @@ services:
       - SQLDatabase=aroniumdb
       - SQLUsername=username
       - SQLPassword="password"
+      - Logging=msteams
     secrets:
       - keyfile
 
