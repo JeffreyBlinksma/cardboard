@@ -179,4 +179,4 @@ while True:
                             **Foutcode: **"+RequestResult['status'])+"<br />\
                             **Foutmelding: **"+RequestResult['message']
                         loopteamsresponse.run_until_complete(msteamsresponse.send())
-                        break                        break
+                        break
