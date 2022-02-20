@@ -4,7 +4,6 @@ services:
     image: registry.robinsmediateam.dev/cardboard:latest
     restart: always
     environment:
-      - KeyFileLocation=robinsmediateam-sepay-x5.pem
       - MijnSepayUsername=example@example.com
       - SID=1234567
       - PinPaymentTypeID=7
@@ -12,3 +11,9 @@ services:
       - SQLDatabase=aroniumdb
       - SQLUsername=username
       - SQLPassword="password"
+    secrets:
+      - keyfile
+
+secrets:
+  keyfile:
+    file: ./keyfile.pem

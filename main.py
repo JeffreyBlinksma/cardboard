@@ -14,7 +14,7 @@ import asyncio
 StoredID = 0
 
 # Import private key
-key_file = open("/configs/key.pem", "r")
+key_file = open("/run/secrets/keyfile", "r")
 key = key_file.read()
 key_file.close()
 pkey = crypto.load_privatekey(crypto.FILETYPE_PEM, key)
@@ -179,4 +179,4 @@ while True:
                             **Foutcode: **"+RequestResult['status'])+"<br />\
                             **Foutmelding: **"+RequestResult['message']
                         loopteamsresponse.run_until_complete(msteamsresponse.send())
-                        break
+                        break                        break
