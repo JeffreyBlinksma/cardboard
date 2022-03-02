@@ -1,3 +1,2 @@
 pyOpenSSL==22.0.0
 zeep==4.1.0
-pymsteams[async]==0.2.1
