@@ -1,4 +1,4 @@
-FROM python:3.10.3-slim@sha256:7457c54b959f8e60bc1d839b8e840d788348cf7fc7f865b354cfe1a7b763bb2b
+FROM python:3.10.3-slim@sha256:de3f55fdc4402a88db7cb53b82a053e247b00dac98c67fb2001a5998044a528a
 
 # Setup dependencies for pyodbc
 RUN \
