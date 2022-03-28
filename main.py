@@ -7,6 +7,9 @@ import random
 from zeep import Client
 import os
 import logging.config
+import requests
+import json
+import urllib.parse
 
 # Set variables
 StoredID = 0
@@ -19,6 +22,9 @@ pkey = crypto.load_privatekey(crypto.FILETYPE_PEM, key)
 
 # Load SOAP Client
 zeepclient = Client("https://wecr.sepay.nl/v2/wecr.asmx?WSDL")
+
+if os.environ['Messaging'] == 'msteams':
+    headers = {'Content-Type': 'application/json'}
 
 # Debug
 if os.environ['DEBUG'] == True:
@@ -70,9 +76,10 @@ while True:
 
             if row[1] == os.environ['PaymentID']:
                 
+                # Start Transaction
                 while True:
                 
-                        # Convert Amount into string with 2 decimals, as required by the API
+                    # Convert Amount into string with 2 decimals, as required by the API
                     ConvertedAmount = "{:.2f}".format(row[2])
 
                     # Generate TransactionRef
@@ -86,26 +93,71 @@ while True:
 
                     # Check status code and retry if neccesary 
                     match RequestResult["status"]:
-                        case 0:
+                        case "00":
+                            if os.environ['Messaging'] == 'msteams':
+                                payload = json.dumps('"{"@type":"MessageCard","@context":"http://schema.org/extensions","themeColor":"f7dda4","summary":"Nieuwe transactie: '+TransactionRef+'","title":"Nieuwe transactie: '+TransactionRef+'","sections":[{"facts":[{"name":"Transactienummer","value":"'+TransactionRef+'"},{"name":"SID","value":"'+os.environ['SID']+'"},{"name":"Betalingskenmerk","value":"'+str(row[0])+'"},{"name":"Bedrag","value":"'+ConvertedAmount+'"}]}]}')
+                                response = requests.request("POST", os.environ['MSTeamsURL'], headers=headers, data=payload)
                             break
-                        case 1:
+                        case "01":
                             print("Some of the required fields are missing: "+ RequestResult['message'])
                             break
-                        case 2:
+                        case "02":
                             print("Signature failed")
                             break
-                        case 4:
+                        case "04":
                             print("Invalid parameters, retrying...")
                             continue
-                        case 6:
+                        case "06":
                             print("Duplicate request")
                             break
-                        case 7:
+                        case "07":
                             print("Terminal not active or not enabled and/or authorized for transactions through WECR")
                             break
-                        case 11:
+                        case "11":
                             print("Pending request for this terminal.")
                             break
-                        case 99:
+                        case "99":
+                            print("Undefined error")
+                            break
+
+                # Get Transaction Status
+                while True:
+                    SignatureData = f"0;2;{os.environ['SepayLogin']};{str(os.environ['SID'])};{TransactionRef}"
+                    SignatureSign = crypto.sign(pkey, SignatureData, "sha256")
+
+                    RequestResult = Client.service.StartTransaction(key_index=0, version="2", login=os.environ['SepayLogin'], sid=os.environ['SID'], transactionref=TransactionRef, signature=SignatureSign)
+
+                    match RequestResult["status"]:
+                        case "00":
+                            if os.environ['Messaging'] == 'msteams':
+                                encodedurl = urllib.parse.quote(RequestResult["ticket"])
+                                payload = json.dumps('{"@type":"MessageCard","@context":"http://schema.org/extensions","themeColor":"f7dda4","summary":"Transactie geslaagd: '+TransactionRef+'","title":"Transactie geslaagd: '+TransactionRef+'","sections":[{"facts":[{"name":"Transactienummer","value":"'+TransactionRef+'"},{"name":"SID","value":"'+os.environ['SID']+'"},{"name":"Betalingskenmerk","value":"'+str(row[0])+'"},{"name":"Bedrag","value":"'+ConvertedAmount+'"},{"name":"Datum","value":"'+RequestResult["transactiontime"]+'"},{"name":"Kaart","value":"'+RequestResult["brand"]+'"}]}],"potentialAction":[{"@type":"OpenUri","name":"Print Bon","targets":[{"os":"windows","uri":"https://banana.com"}]}]}')
+                                response = requests.request("POST", os.environ['MSTeamsURL'], headers=headers, data=payload)
+                            continue
+                        case "01":
+                            print("Some of the required fields are missing: "+ RequestResult['message'])
+                            break
+                        case "02":
+                            print("Signature failed")
+                            break
+                        case "04":
+                            print("Invalid parameters, retrying...")
+                            continue
+                        case "07":
+                            print("Terminal not active or not enabled and/or authorized for transactions through WECR")
+                            break
+                        case "13":
+                            print("Transaction failed")
+                            break
+                        case "14":
+                            print("This transaction was canceled. Reason:" + RequestResult['message'])
+                            break
+                        case "15":
+                            print("Transaction is not finished and has not been canceled yet")
+                            continue
+                        case "17":
+                            print("Transaction already in progress, cannot be canceled anymore")
+                            continue
+                        case "99":
                             print("Undefined error")
                             break

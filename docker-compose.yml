@@ -11,6 +11,8 @@ services:
       - SQLDatabase=aroniumdb
       - SQLUsername=username
       - SQLPassword="password"
+      - Messaging=msteams
+      - MSTeamsURL="incomingwebhookurl"
     secrets:
       - keyfile
 
