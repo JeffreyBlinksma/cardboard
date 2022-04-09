@@ -125,6 +125,7 @@ while True:
                 SignatureSign = crypto.sign(pkey, SignatureData, "sha256")
 
                 while True:
+                    time.sleep(2)
 
                     RequestResult = Client.service.StartTransaction(key_index=0, version="2", login=os.environ['SepayLogin'], sid=os.environ['SID'], transactionref=TransactionRef, signature=SignatureSign)
 
