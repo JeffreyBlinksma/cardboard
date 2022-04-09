@@ -153,6 +153,10 @@ while True:
                             break
                         case "14":
                             print("This transaction was canceled. Reason:" + RequestResult['message'])
+                            if os.environ['Messaging'] == 'msteams':
+                                encodedurl = urllib.parse.quote(RequestResult["ticket"])
+                                payload = json.dumps('{"@type":"MessageCard","@context":"http://schema.org/extensions","themeColor":"f7dda4","summary":"Transactie geannuleerd: '+TransactionRef+'","title":"Transactie geannuleerd: '+TransactionRef+'","sections":[{"facts":[{"name":"Transactienummer","value":"'+TransactionRef+'"},{"name":"SID","value":"'+os.environ['SID']+'"},{"name":"Betalingskenmerk","value":"'+str(row[0])+'"},{"name":"Bedrag","value":"'+ConvertedAmount+'"},{"name":"Datum","value":"'+RequestResult["transactiontime"]+'"},{"name":"Bericht","value":"'+RequestResult["message"]+'"}]}]}')
+                                response = requests.request("POST", os.environ['MSTeamsURL'], headers=headers, data=payload)                            
                             break
                         case "15":
                             print("Transaction is not finished and has not been canceled yet")
