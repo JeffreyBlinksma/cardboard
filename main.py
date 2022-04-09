@@ -121,9 +121,10 @@ while True:
                             break
 
                 # Get Transaction Status
+                SignatureData = f"0;2;{os.environ['SepayLogin']};{str(os.environ['SID'])};{TransactionRef}"
+                SignatureSign = crypto.sign(pkey, SignatureData, "sha256")
+
                 while True:
-                    SignatureData = f"0;2;{os.environ['SepayLogin']};{str(os.environ['SID'])};{TransactionRef}"
-                    SignatureSign = crypto.sign(pkey, SignatureData, "sha256")
 
                     RequestResult = Client.service.StartTransaction(key_index=0, version="2", login=os.environ['SepayLogin'], sid=os.environ['SID'], transactionref=TransactionRef, signature=SignatureSign)
 
