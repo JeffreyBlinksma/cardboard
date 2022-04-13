@@ -124,46 +124,48 @@ while True:
                 SignatureData = f"0;2;{os.environ['MijnSepayUsername']};{str(os.environ['SID'])};{TransactionRef}"
                 SignatureSign = crypto.sign(pkey, SignatureData, "sha256")
 
-                while True:
-                    time.sleep(2)
+                if RequestResult["status"] == 00:
 
-                    RequestResult = zeepclient.service.StartTransaction(key_index=0, version="2", login=os.environ['MijnSepayUsername'], sid=int(os.environ['SID']), transactionref=TransactionRef, signature=SignatureSign)
+                    while True:
+                        time.sleep(2)
 
-                    match RequestResult["status"]:
-                        case "00":
-                            if os.environ['Messaging'] == 'msteams':
-                                encodedurl = urllib.parse.quote(RequestResult["ticket"])
-                                payload = json.dumps('{"@type":"MessageCard","@context":"http://schema.org/extensions","themeColor":"f7dda4","summary":"Transactie geslaagd: '+TransactionRef+'","title":"Transactie geslaagd: '+TransactionRef+'","sections":[{"facts":[{"name":"Transactienummer","value":"'+TransactionRef+'"},{"name":"SID","value":"'+os.environ['SID']+'"},{"name":"Betalingskenmerk","value":"'+str(row[0])+'"},{"name":"Bedrag","value":"'+ConvertedAmount+'"},{"name":"Datum","value":"'+RequestResult["transactiontime"]+'"},{"name":"Kaart","value":"'+RequestResult["brand"]+'"}]}],"potentialAction":[{"@type":"OpenUri","name":"Print Bon","targets":[{"os":"windows","uri":"http://127.0.0.1:6543/?data='+encodedurl+'"}]}]}')
-                                response = requests.request("POST", os.environ['MSTeamsURL'], headers=headers, data=payload)
-                            continue
-                        case "01":
-                            print("Some of the required fields are missing: "+ RequestResult['message'])
-                            break
-                        case "02":
-                            print("Signature failed")
-                            break
-                        case "04":
-                            print("Invalid parameters, retrying...")
-                            continue
-                        case "07":
-                            print("Terminal not active or not enabled and/or authorized for transactions through WECR")
-                            break
-                        case "13":
-                            print("Transaction failed")
-                            break
-                        case "14":
-                            print("This transaction was canceled. Reason:" + RequestResult['message'])
-                            if os.environ['Messaging'] == 'msteams':
-                                encodedurl = urllib.parse.quote(RequestResult["ticket"])
-                                payload = json.dumps('{"@type":"MessageCard","@context":"http://schema.org/extensions","themeColor":"f7dda4","summary":"Transactie geannuleerd: '+TransactionRef+'","title":"Transactie geannuleerd: '+TransactionRef+'","sections":[{"facts":[{"name":"Transactienummer","value":"'+TransactionRef+'"},{"name":"SID","value":"'+os.environ['SID']+'"},{"name":"Betalingskenmerk","value":"'+str(row[0])+'"},{"name":"Bedrag","value":"'+ConvertedAmount+'"},{"name":"Datum","value":"'+RequestResult["transactiontime"]+'"},{"name":"Bericht","value":"'+RequestResult["message"]+'"}]}]}')
-                                response = requests.request("POST", os.environ['MSTeamsURL'], headers=headers, data=payload)                            
-                            break
-                        case "15":
-                            print("Transaction is not finished and has not been canceled yet")
-                            continue
-                        case "17":
-                            print("Transaction already in progress, cannot be canceled anymore")
-                            continue
-                        case "99":
-                            print("Undefined error")
-                            break
+                        RequestResult = zeepclient.service.StartTransaction(key_index=0, version="2", login=os.environ['MijnSepayUsername'], sid=int(os.environ['SID']), transactionref=TransactionRef, signature=SignatureSign)
+
+                        match RequestResult["status"]:
+                            case "00":
+                                if os.environ['Messaging'] == 'msteams':
+                                    encodedurl = urllib.parse.quote(RequestResult["ticket"])
+                                    payload = json.dumps('{"@type":"MessageCard","@context":"http://schema.org/extensions","themeColor":"f7dda4","summary":"Transactie geslaagd: '+TransactionRef+'","title":"Transactie geslaagd: '+TransactionRef+'","sections":[{"facts":[{"name":"Transactienummer","value":"'+TransactionRef+'"},{"name":"SID","value":"'+os.environ['SID']+'"},{"name":"Betalingskenmerk","value":"'+str(row[0])+'"},{"name":"Bedrag","value":"'+ConvertedAmount+'"},{"name":"Datum","value":"'+RequestResult["transactiontime"]+'"},{"name":"Kaart","value":"'+RequestResult["brand"]+'"}]}],"potentialAction":[{"@type":"OpenUri","name":"Print Bon","targets":[{"os":"windows","uri":"http://127.0.0.1:6543/?data='+encodedurl+'"}]}]}')
+                                    response = requests.request("POST", os.environ['MSTeamsURL'], headers=headers, data=payload)
+                                continue
+                            case "01":
+                                print("Some of the required fields are missing: "+ RequestResult['message'])
+                                break
+                            case "02":
+                                print("Signature failed")
+                                break
+                            case "04":
+                                print("Invalid parameters, retrying...")
+                                continue
+                            case "07":
+                                print("Terminal not active or not enabled and/or authorized for transactions through WECR")
+                                break
+                            case "13":
+                                print("Transaction failed")
+                                break
+                            case "14":
+                                print("This transaction was canceled. Reason:" + RequestResult['message'])
+                                if os.environ['Messaging'] == 'msteams':
+                                    encodedurl = urllib.parse.quote(RequestResult["ticket"])
+                                    payload = json.dumps('{"@type":"MessageCard","@context":"http://schema.org/extensions","themeColor":"f7dda4","summary":"Transactie geannuleerd: '+TransactionRef+'","title":"Transactie geannuleerd: '+TransactionRef+'","sections":[{"facts":[{"name":"Transactienummer","value":"'+TransactionRef+'"},{"name":"SID","value":"'+os.environ['SID']+'"},{"name":"Betalingskenmerk","value":"'+str(row[0])+'"},{"name":"Bedrag","value":"'+ConvertedAmount+'"},{"name":"Datum","value":"'+RequestResult["transactiontime"]+'"},{"name":"Bericht","value":"'+RequestResult["message"]+'"}]}]}')
+                                    response = requests.request("POST", os.environ['MSTeamsURL'], headers=headers, data=payload)                            
+                                break
+                            case "15":
+                                print("Transaction is not finished and has not been canceled yet")
+                                continue
+                            case "17":
+                                print("Transaction already in progress, cannot be canceled anymore")
+                                continue
+                            case "99":
+                                print("Undefined error")
+                                break
