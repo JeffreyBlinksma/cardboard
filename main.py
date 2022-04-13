@@ -89,7 +89,7 @@ while True:
                     SignatureData = f"0;2;{os.environ['MijnSepayUsername']};{str(int(os.environ['SID']))};{TransactionRef};{str(row[0])};{ConvertedAmount};"
                     SignatureSign = crypto.sign(pkey, SignatureData, "sha256")
 
-                    RequestResult = Client.service.StartTransaction(key_index=0, version="2", login=os.environ['MijnSepayUsername'], sid=int(os.environ['SID']), transactionref=TransactionRef, merchantref=str(row[0]), amount=ConvertedAmount, signature=SignatureSign)
+                    RequestResult = zeepclient.service.StartTransaction(key_index=0, version="2", login=os.environ['MijnSepayUsername'], sid=int(os.environ['SID']), transactionref=TransactionRef, merchantref=str(row[0]), amount=ConvertedAmount, signature=SignatureSign)
 
                     # Check status code and retry if neccesary 
                     match RequestResult["status"]:
@@ -127,7 +127,7 @@ while True:
                 while True:
                     time.sleep(2)
 
-                    RequestResult = Client.service.StartTransaction(key_index=0, version="2", login=os.environ['MijnSepayUsername'], sid=int(os.environ['SID']), transactionref=TransactionRef, signature=SignatureSign)
+                    RequestResult = zeepclient.service.StartTransaction(key_index=0, version="2", login=os.environ['MijnSepayUsername'], sid=int(os.environ['SID']), transactionref=TransactionRef, signature=SignatureSign)
 
                     match RequestResult["status"]:
                         case "00":
