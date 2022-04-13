@@ -10,9 +10,11 @@ import logging.config
 import requests
 import json
 import urllib.parse
+import json
 
 # Set variables
 StoredID = 0
+TransactionerrorCodes = json.load(open("./lang/Transactionerror/en_US.json"))
 
 # Import private key
 key_file = open("/run/secrets/keyfile", "r")
@@ -152,13 +154,17 @@ while True:
                                 break
                             case "13":
                                 print("Transaction failed")
+                                if os.environ['Messaging'] == 'msteams':
+                                    encodedurl = urllib.parse.quote(RequestResult["ticket"])
+                                    payload = json.dumps('{"@type":"MessageCard","@context":"http://schema.org/extensions","themeColor":"f7dda4","summary":"Transactie mislukt: '+TransactionRef+'","title":"Transactie mislukt: '+TransactionRef+'","sections":[{"facts":[{"name":"Transactienummer","value":"'+TransactionRef+'"},{"name":"SID","value":"'+str(int(os.environ['SID']))+'"},{"name":"Betalingskenmerk","value":"'+str(row[0])+'"},{"name":"Bedrag","value":"'+ConvertedAmount+'"},{"name":"Datum","value":"'+RequestResult["transactiontime"]+'"},{"name":"Kaart","value":"'+RequestResult["brand"]+'"},{"name":"Bericht","value":"'+RequestResult["message"]+'"},{"name":"Reden","value":"'+TransactionerrorCodes[str(int(RequestResult["transactionerror"]))]+'"}]}]}')
+                                    response = requests.request("POST", os.environ['MSTeamsURL'], headers=headers, data=payload)
                                 break
                             case "14":
                                 print("This transaction was canceled. Reason:" + RequestResult['message'])
                                 if os.environ['Messaging'] == 'msteams':
                                     encodedurl = urllib.parse.quote(RequestResult["ticket"])
-                                    payload = json.dumps('{"@type":"MessageCard","@context":"http://schema.org/extensions","themeColor":"f7dda4","summary":"Transactie geannuleerd: '+TransactionRef+'","title":"Transactie geannuleerd: '+TransactionRef+'","sections":[{"facts":[{"name":"Transactienummer","value":"'+TransactionRef+'"},{"name":"SID","value":"'+os.environ['SID']+'"},{"name":"Betalingskenmerk","value":"'+str(row[0])+'"},{"name":"Bedrag","value":"'+ConvertedAmount+'"},{"name":"Datum","value":"'+RequestResult["transactiontime"]+'"},{"name":"Bericht","value":"'+RequestResult["message"]+'"}]}]}')
-                                    response = requests.request("POST", os.environ['MSTeamsURL'], headers=headers, data=payload)                            
+                                    payload = json.dumps('{"@type":"MessageCard","@context":"http://schema.org/extensions","themeColor":"f7dda4","summary":"Transactie geannuleerd: '+TransactionRef+'","title":"Transactie geannuleerd: '+TransactionRef+'","sections":[{"facts":[{"name":"Transactienummer","value":"'+TransactionRef+'"},{"name":"SID","value":"'+str(int(os.environ['SID']))+'"},{"name":"Betalingskenmerk","value":"'+str(row[0])+'"},{"name":"Bedrag","value":"'+ConvertedAmount+'"},{"name":"Datum","value":"'+RequestResult["transactiontime"]+'"},{"name":"Bericht","value":"'+RequestResult["message"]+'"}]}]}')
+                                    response = requests.request("POST", os.environ['MSTeamsURL'], headers=headers, data=payload)
                                 break
                             case "15":
                                 print("Transaction is not finished and has not been canceled yet")
