@@ -86,7 +86,7 @@ while True:
                     TransactionRef = ''.join(random.choices(string.ascii_uppercase + string.digits, k=9))
 
                     # Create Signature
-                    SignatureData = f"0;2;{os.environ['MijnSepayUsername']};{str(int(os.environ['SID']))};{TransactionRef};{str(row[0])};{ConvertedAmount};"
+                    SignatureData = f"0;2;{str(os.environ['MijnSepayUsername'])};{str(int(os.environ['SID']))};{TransactionRef};{str(row[0])};{ConvertedAmount};"
                     SignatureSign = crypto.sign(pkey, SignatureData, "sha256")
 
                     RequestResult = zeepclient.service.StartTransaction(key_index=0, version="2", login=os.environ['MijnSepayUsername'], sid=int(os.environ['SID']), transactionref=TransactionRef, merchantref=str(row[0]), amount=ConvertedAmount, signature=SignatureSign)
@@ -121,7 +121,7 @@ while True:
                             break
 
                 # Get Transaction Status
-                SignatureData = f"0;2;{os.environ['MijnSepayUsername']};{str(os.environ['SID'])};{TransactionRef}"
+                SignatureData = f"0;2;{str(os.environ['MijnSepayUsername'])};{str(int(os.environ['SID']))};{TransactionRef}"
                 SignatureSign = crypto.sign(pkey, SignatureData, "sha256")
 
                 if RequestResult["status"] == 00:
