@@ -1,0 +1,8 @@
+{
+    "000": "Transaction succeeded",
+    "100": "Do not honour",
+    "101": "Expired card",
+    "104": "Restricted card",
+    "105": "Check security settings of acquirer",
+    "106": "Allowable PIN tries exceeded"
+}
