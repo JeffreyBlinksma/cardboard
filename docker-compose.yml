@@ -6,8 +6,8 @@ services:
     environment:
       - MijnSepayUsername=example@example.com
       - SID=1234567
-      - PinPaymentTypeID=7
-      - SQLAddress="127.0.0.1\ARONIUM"
+      - PaymentID=7
+      - SQLServer="127.0.0.1\ARONIUM"
       - SQLDatabase=aroniumdb
       - SQLUsername=username
       - SQLPassword="password"

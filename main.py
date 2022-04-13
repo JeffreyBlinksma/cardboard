@@ -53,7 +53,7 @@ if os.environ['DEBUG'] == True:
 
 server = os.environ['SQLServer']
 database = os.environ['SQLDatabase']
-username = os.environ['SQLUser']
+username = os.environ['SQLUsername']
 password = os.environ['SQLPassword']
 
 cnxn = pyodbc.connect('DRIVER={ODBC Driver 17 for SQL Server};SERVER='+server+';DATABASE='+database+';UID='+username+';PWD='+password)
@@ -64,7 +64,7 @@ while True:
     time.sleep(1)
 
     # Grab last entry from Payment, and print the DocumentID, PaymentTypeID and Amount
-    cursor.execute("SELECT DocumentID, PaymentTypeID, Amount FROM "+database+".dbo.Payment ORDER BY DocumentID DESC")
+    cursor.execute("SELECT DocumentID, PaymentTypeID, Amount FROM dbo.Payment ORDER BY DocumentID DESC")
     row = cursor.fetchone()
 
     if StoredID == 0:
@@ -86,10 +86,10 @@ while True:
                     TransactionRef = ''.join(random.choices(string.ascii_uppercase + string.digits, k=9))
 
                     # Create Signature
-                    SignatureData = f"0;2;{os.environ['SepayLogin']};{str(os.environ['SID'])};{TransactionRef};{str(row[0])};{ConvertedAmount};"
+                    SignatureData = f"0;2;{os.environ['MijnSepayUsername']};{str(int(os.environ['SID']))};{TransactionRef};{str(row[0])};{ConvertedAmount};"
                     SignatureSign = crypto.sign(pkey, SignatureData, "sha256")
 
-                    RequestResult = Client.service.StartTransaction(key_index=0, version="2", login=os.environ['SepayLogin'], sid=os.environ['SID'], transactionref=TransactionRef, merchantref=str(row[0]), amount=ConvertedAmount, signature=SignatureSign)
+                    RequestResult = Client.service.StartTransaction(key_index=0, version="2", login=os.environ['MijnSepayUsername'], sid=int(os.environ['SID']), transactionref=TransactionRef, merchantref=str(row[0]), amount=ConvertedAmount, signature=SignatureSign)
 
                     # Check status code and retry if neccesary 
                     match RequestResult["status"]:
@@ -121,13 +121,13 @@ while True:
                             break
 
                 # Get Transaction Status
-                SignatureData = f"0;2;{os.environ['SepayLogin']};{str(os.environ['SID'])};{TransactionRef}"
+                SignatureData = f"0;2;{os.environ['MijnSepayUsername']};{str(os.environ['SID'])};{TransactionRef}"
                 SignatureSign = crypto.sign(pkey, SignatureData, "sha256")
 
                 while True:
                     time.sleep(2)
 
-                    RequestResult = Client.service.StartTransaction(key_index=0, version="2", login=os.environ['SepayLogin'], sid=os.environ['SID'], transactionref=TransactionRef, signature=SignatureSign)
+                    RequestResult = Client.service.StartTransaction(key_index=0, version="2", login=os.environ['MijnSepayUsername'], sid=int(os.environ['SID']), transactionref=TransactionRef, signature=SignatureSign)
 
                     match RequestResult["status"]:
                         case "00":
