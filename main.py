@@ -10,11 +10,18 @@ import logging.config
 import requests
 import json
 import urllib.parse
-import json
+import gettext
 
 # Set variables
 StoredID = 0
 TransactionerrorCodes = json.load(open("./lang/Transactionerror/en_US.json"))
+
+# Set the local directory
+localedir = './locale'
+
+# Set up your magic function
+translate = gettext.translation('appname', localedir, fallback=True)
+_ = translate.gettext
 
 # Import private key
 key_file = open("/run/secrets/keyfile", "r")
@@ -97,7 +104,7 @@ while True:
                     match RequestResult["status"]:
                         case "00":
                             if os.environ['Messaging'] == 'msteams':
-                                payload = json.dumps('"{"@type":"MessageCard","@context":"http://schema.org/extensions","themeColor":"f7dda4","summary":"Nieuwe transactie: '+TransactionRef+'","title":"Nieuwe transactie: '+TransactionRef+'","sections":[{"facts":[{"name":"Transactienummer","value":"'+TransactionRef+'"},{"name":"SID","value":"'+os.environ['SID']+'"},{"name":"Betalingskenmerk","value":"'+str(row[0])+'"},{"name":"Bedrag","value":"'+ConvertedAmount+'"}]}]}')
+                                payload = json.dumps('"{"@type":"MessageCard","@context":"http://schema.org/extensions","themeColor":"f7dda4","summary":"'+_("New Transaction")+': '+TransactionRef+'","title":"'+_("New Transaction")+': '+TransactionRef+'","sections":[{"facts":[{"name":"'+_("Transaction ID")+'","value":"'+TransactionRef+'"},{"name":"SID","value":"'+os.environ['SID']+'"},{"name":"'+_("Payment ID")+'","value":"'+str(row[0])+'"},{"name":"'+_("Amount")+'","value":"'+ConvertedAmount+'"}]}]}')
                                 response = requests.request("POST", os.environ['MSTeamsURL'], headers=headers, data=payload)
                             break
                         case "01":
@@ -137,7 +144,7 @@ while True:
                             case "00":
                                 if os.environ['Messaging'] == 'msteams':
                                     encodedurl = urllib.parse.quote(RequestResult["ticket"])
-                                    payload = json.dumps('{"@type":"MessageCard","@context":"http://schema.org/extensions","themeColor":"f7dda4","summary":"Transactie geslaagd: '+TransactionRef+'","title":"Transactie geslaagd: '+TransactionRef+'","sections":[{"facts":[{"name":"Transactienummer","value":"'+TransactionRef+'"},{"name":"SID","value":"'+os.environ['SID']+'"},{"name":"Betalingskenmerk","value":"'+str(row[0])+'"},{"name":"Bedrag","value":"'+ConvertedAmount+'"},{"name":"Datum","value":"'+RequestResult["transactiontime"]+'"},{"name":"Kaart","value":"'+RequestResult["brand"]+'"}]}],"potentialAction":[{"@type":"OpenUri","name":"Print Bon","targets":[{"os":"windows","uri":"http://127.0.0.1:6543/?data='+encodedurl+'"}]}]}')
+                                    payload = json.dumps('{"@type":"MessageCard","@context":"http://schema.org/extensions","themeColor":"f7dda4","summary":"'+_("Transaction succeeded")+': '+TransactionRef+'","title":'+_("Transaction succeeded")+': '+TransactionRef+'","sections":[{"facts":[{"name":"'+_("Transaction ID")+'","value":"'+TransactionRef+'"},{"name":"SID","value":"'+os.environ['SID']+'"},{"name":"'+_("Payment ID")+'","value":"'+str(row[0])+'"},{"name":"'+_("Amount")+'","value":"'+ConvertedAmount+'"},{"name":"'+_("Amount")+'","value":"'+RequestResult["transactiontime"]+'"},{"name":"'+_("Brand")+'","value":"'+RequestResult["brand"]+'"}]}],"potentialAction":[{"@type":"OpenUri","name":"'+_("Print Receipt")+'","targets":[{"os":"windows","uri":"http://127.0.0.1:6543/?data='+encodedurl+'"}]}]}')
                                     response = requests.request("POST", os.environ['MSTeamsURL'], headers=headers, data=payload)
                                 continue
                             case "01":
@@ -156,14 +163,14 @@ while True:
                                 print("Transaction failed")
                                 if os.environ['Messaging'] == 'msteams':
                                     encodedurl = urllib.parse.quote(RequestResult["ticket"])
-                                    payload = json.dumps('{"@type":"MessageCard","@context":"http://schema.org/extensions","themeColor":"f7dda4","summary":"Transactie mislukt: '+TransactionRef+'","title":"Transactie mislukt: '+TransactionRef+'","sections":[{"facts":[{"name":"Transactienummer","value":"'+TransactionRef+'"},{"name":"SID","value":"'+str(int(os.environ['SID']))+'"},{"name":"Betalingskenmerk","value":"'+str(row[0])+'"},{"name":"Bedrag","value":"'+ConvertedAmount+'"},{"name":"Datum","value":"'+RequestResult["transactiontime"]+'"},{"name":"Kaart","value":"'+RequestResult["brand"]+'"},{"name":"Bericht","value":"'+RequestResult["message"]+'"},{"name":"Reden","value":"'+TransactionerrorCodes[str(int(RequestResult["transactionerror"]))]+'"}]}]}')
+                                    payload = json.dumps('{"@type":"MessageCard","@context":"http://schema.org/extensions","themeColor":"f7dda4","summary":"'+_("Transaction Failed")+': '+TransactionRef+'","title":"'+_("Transaction Failed")+': '+TransactionRef+'","sections":[{"facts":[{"name":"'+_("Transaction ID")+'","value":"'+TransactionRef+'"},{"name":"SID","value":"'+str(int(os.environ['SID']))+'"},{"name":"'+_("Payment ID")+'","value":"'+str(row[0])+'"},{"name":"'+_("Amount")+'","value":"'+ConvertedAmount+'"},{"name":"'+_("Date")+'","value":"'+RequestResult["transactiontime"]+'"},{"name":"'+_("Brand")+'","value":"'+RequestResult["brand"]+'"},{"name":"'+_("Message")+'","value":"'+RequestResult["message"]+'"},{"name":"'+_("Reason")+'","value":"'+TransactionerrorCodes[str(int(RequestResult["transactionerror"]))]+'"}]}]}')
                                     response = requests.request("POST", os.environ['MSTeamsURL'], headers=headers, data=payload)
                                 break
                             case "14":
                                 print("This transaction was canceled. Reason:" + RequestResult['message'])
                                 if os.environ['Messaging'] == 'msteams':
                                     encodedurl = urllib.parse.quote(RequestResult["ticket"])
-                                    payload = json.dumps('{"@type":"MessageCard","@context":"http://schema.org/extensions","themeColor":"f7dda4","summary":"Transactie geannuleerd: '+TransactionRef+'","title":"Transactie geannuleerd: '+TransactionRef+'","sections":[{"facts":[{"name":"Transactienummer","value":"'+TransactionRef+'"},{"name":"SID","value":"'+str(int(os.environ['SID']))+'"},{"name":"Betalingskenmerk","value":"'+str(row[0])+'"},{"name":"Bedrag","value":"'+ConvertedAmount+'"},{"name":"Datum","value":"'+RequestResult["transactiontime"]+'"},{"name":"Bericht","value":"'+RequestResult["message"]+'"}]}]}')
+                                    payload = json.dumps('{"@type":"MessageCard","@context":"http://schema.org/extensions","themeColor":"f7dda4","summary":"'+_("Transaction Canceled")+': '+TransactionRef+'","title":"'+_("Transaction Canceled")+': '+TransactionRef+'","sections":[{"facts":[{"name":"'+_("Transaction ID")+'","value":"'+TransactionRef+'"},{"name":"SID","value":"'+str(int(os.environ['SID']))+'"},{"name":"'+_("Payment ID")+'","value":"'+str(row[0])+'"},{"name":"'+_("Amount")+'","value":"'+ConvertedAmount+'"},{"name":"'+_("Date")+'","value":"'+RequestResult["transactiontime"]+'"},{"name":"'+_("Message")+'","value":"'+RequestResult["message"]+'"}]}]}')
                                     response = requests.request("POST", os.environ['MSTeamsURL'], headers=headers, data=payload)
                                 break
                             case "15":
