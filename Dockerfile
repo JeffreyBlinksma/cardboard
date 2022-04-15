@@ -1,47 +1,26 @@
-FROM python:3.10.4-slim@sha256:80ebadfc9b83cf037ebe9a7db0631101b7c18c58f4197de0ef2badb268a35a45
+FROM python:3.10.4-bullseye@sha256:4cba2f7f37c6d8e884045d7782e407593cddea864a3cd1f46d487aace865e323 AS builder
+RUN apt-get update &&\
+    apt-get install -y build-essential unixodbc-dev &&\
+    python -m pip wheel --wheel-dir /tmp/wheelhouse pyodbc==4.0.32 &&\
+    python -m pip wheel --no-binary :all: --wheel-dir /tmp/wheelhouse cffi
 
-# Setup dependencies for pyodbc
+FROM python:3.10.4-alpine3.15@sha256:2cca1fb3c699208f929afd487be37ddc97c531648c404f3df78fb25a0ff344a2
+
+ENV ACCEPT_EULA=Y
 RUN \
-  export ACCEPT_EULA='Y' && \
-  export MYSQL_CONNECTOR='mysql-connector-odbc-8.0.28-linux-glibc2.12-x86-64bit' && \
-  export MYSQL_CONNECTOR_CHECKSUM='003a5e45830f103fa303743179e20fb6' && \
-  apt-get update && \
-  apt-get install -y curl build-essential unixodbc-dev g++ apt-transport-https wget && \
-#  gpg --keyserver hkp://keyserver.ubuntu.com:80 --recv-keys 0x467b942d3a79bd29 && \
-  #
-  # Install pyodbc db drivers for MSSQL, PG and MySQL
-  curl https://packages.microsoft.com/keys/microsoft.asc | apt-key add - && \
-  curl https://packages.microsoft.com/config/debian/10/prod.list > /etc/apt/sources.list.d/mssql-release.list && \
-#  curl -L -o ${MYSQL_CONNECTOR}.tar.gz https://dev.mysql.com/get/Downloads/Connector-ODBC/8.0/${MYSQL_CONNECTOR}.tar.gz && \
-#  curl -L -o ${MYSQL_CONNECTOR}.tar.gz.asc https://downloads.mysql.com/archives/gpg/\?file\=${MYSQL_CONNECTOR}.tar.gz\&p\=10 && \
-#  gpg --verify ${MYSQL_CONNECTOR}.tar.gz.asc && \
-#  echo "${MYSQL_CONNECTOR_CHECKSUM} ${MYSQL_CONNECTOR}.tar.gz" | md5sum -c - && \
-  wget http://ftp.debian.org/debian/pool/main/g/glibc/multiarch-support_2.28-10_amd64.deb &&\
-  apt-get install ./multiarch-support_2.28-10_amd64.deb &&\
-  apt-get update && \
-#  gunzip ${MYSQL_CONNECTOR}.tar.gz && tar xvf ${MYSQL_CONNECTOR}.tar && \
-#  cp ${MYSQL_CONNECTOR}/bin/* /usr/local/bin && cp ${MYSQL_CONNECTOR}/lib/* /usr/local/lib && \
-#  myodbc-installer -a -d -n "MySQL ODBC 8.0 Driver" -t "Driver=/usr/local/lib/libmyodbc8w.so" && \
-#  myodbc-installer -a -d -n "MySQL ODBC 8.0" -t "Driver=/usr/local/lib/libmyodbc8a.so" && \
-  apt-get install -y msodbcsql17 odbc-postgresql && \
-  #
-  # Update odbcinst.ini to make sure full path to driver is listed
-  sed 's/Driver=psql/Driver=\/usr\/lib\/x86_64-linux-gnu\/odbc\/psql/' /etc/odbcinst.ini > /tmp/temp.ini && \
-  mv -f /tmp/temp.ini /etc/odbcinst.ini && \
-  # Install dependencies
-  pip install --upgrade pip && \
-  pip install pyodbc==4.0.32 && \
-  # Cleanup build dependencies
-  rm -rf ${MYSQL_CONNECTOR}* && \
-  apt-get remove -y curl apt-transport-https debconf-utils g++ gcc rsync unixodbc-dev build-essential gnupg2 wget && \
-  apt-get autoremove -y && apt-get autoclean -y
+    apk add --no-cache curl gnupg &&\
+    curl -O https://download.microsoft.com/download/b/9/f/b9f3cce4-3925-46d4-9f46-da08869c6486/msodbcsql18_18.0.1.1-1_amd64.apk &&\
+    curl -O https://download.microsoft.com/download/b/9/f/b9f3cce4-3925-46d4-9f46-da08869c6486/msodbcsql18_18.0.1.1-1_amd64.sig &&\
+    curl https://packages.microsoft.com/keys/microsoft.asc  | gpg --import - &&\
+    gpg --verify -v msodbcsql18_18.0.1.1-1_amd64.sig msodbcsql18_18.0.1.1-1_amd64.apk &&\
+    apk add --allow-untrusted msodbcsql18_18.0.1.1-1_amd64.apk &&\
+    rm msodbcsql18_18.0.1.1-1_amd64.apk &&\
+    apk del curl gnupg
 
+COPY --from=builder /tmp/wheelhouse /tmp/wheelhouse
+RUN ls /tmp/wheelhouse && pip install --no-index --find-links=/tmp/wheelhouse pyodbc==4.0.32 cffi
+RUN pip install cryptography==36.0.2 zeep==4.1.0
 WORKDIR /app
-
-COPY requirements.txt .
-# Install dependencies
-RUN pip install -r requirements.txt
-
-COPY main.py .
-
+COPY main.py pubkeys lang /app/
+ENV PYTHONUNBUFFERED 1
 CMD ["python", "main.py"]
