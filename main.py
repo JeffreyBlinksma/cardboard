@@ -1,7 +1,6 @@
 # Import dependencies
 import time
 import pyodbc
-from OpenSSL import crypto
 import string
 import random
 from zeep import Client
@@ -11,6 +10,10 @@ import requests
 import json
 import urllib.parse
 import gettext
+from cryptography.hazmat.backends import default_backend
+from cryptography.hazmat.primitives import hashes
+from cryptography.hazmat.primitives.asymmetric import padding
+from cryptography.hazmat.primitives import serialization 
 
 # Set variables
 StoredID = 0
@@ -24,10 +27,12 @@ translate = gettext.translation('appname', localedir, fallback=True)
 _ = translate.gettext
 
 # Import private key
-key_file = open("/run/secrets/keyfile", "r")
-key = key_file.read()
-key_file.close()
-pkey = crypto.load_privatekey(crypto.FILETYPE_PEM, key)
+with open("/run/secrets/keyfile", "rb") as f:
+    pkey = serialization.load_pem_private_key(
+        f.read(),
+        password=None,
+        backend=default_backend()
+    )
 
 # Load SOAP Client
 zeepclient = Client("https://wecr.sepay.nl/v2/wecr.asmx?WSDL")
@@ -96,7 +101,7 @@ while True:
 
                     # Create Signature
                     SignatureData = f"0;2;{str(os.environ['MijnSepayUsername'])};{str(int(os.environ['SID']))};{TransactionRef};{str(row[0])};{ConvertedAmount};"
-                    SignatureSign = crypto.sign(pkey, SignatureData, "sha256")
+                    SignatureSign = pkey.sign(SignatureData.encode(), padding.PKCS1v15(), hashes.SHA256())
 
                     RequestResult = zeepclient.service.StartTransaction(key_index=0, version="2", login=os.environ['MijnSepayUsername'], sid=int(os.environ['SID']), transactionref=TransactionRef, merchantref=str(row[0]), amount=ConvertedAmount, signature=SignatureSign)
 
