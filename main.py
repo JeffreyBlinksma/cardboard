@@ -136,9 +136,9 @@ while True:
 
                 # Get Transaction Status
                 SignatureData = f"0;2;{str(os.environ['MijnSepayUsername'])};{str(int(os.environ['SID']))};{TransactionRef}"
-                SignatureSign = crypto.sign(pkey, SignatureData, "sha256")
+                SignatureSign = pkey.sign(SignatureData.encode(), padding.PKCS1v15(), hashes.SHA256())
 
-                if RequestResult["status"] == 00:
+                if RequestResult["status"] == "00":
 
                     while True:
                         time.sleep(2)
@@ -151,7 +151,7 @@ while True:
                                     encodedurl = urllib.parse.quote(RequestResult["ticket"])
                                     payload = json.dumps('{"@type":"MessageCard","@context":"http://schema.org/extensions","themeColor":"f7dda4","summary":"'+_("Transaction succeeded")+': '+TransactionRef+'","title":'+_("Transaction succeeded")+': '+TransactionRef+'","sections":[{"facts":[{"name":"'+_("Transaction ID")+'","value":"'+TransactionRef+'"},{"name":"SID","value":"'+os.environ['SID']+'"},{"name":"'+_("Payment ID")+'","value":"'+str(row[0])+'"},{"name":"'+_("Amount")+'","value":"'+ConvertedAmount+'"},{"name":"'+_("Amount")+'","value":"'+RequestResult["transactiontime"]+'"},{"name":"'+_("Brand")+'","value":"'+RequestResult["brand"]+'"}]}],"potentialAction":[{"@type":"OpenUri","name":"'+_("Print Receipt")+'","targets":[{"os":"windows","uri":"http://127.0.0.1:6543/?data='+encodedurl+'"}]}]}')
                                     response = requests.request("POST", os.environ['MSTeamsURL'], headers=headers, data=payload)
-                                continue
+                                break
                             case "01":
                                 print("Some of the required fields are missing: "+ RequestResult['message'])
                                 break

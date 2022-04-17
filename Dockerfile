@@ -18,9 +18,11 @@ RUN \
     apk del curl gnupg
 
 COPY --from=builder /tmp/wheelhouse /tmp/wheelhouse
-RUN ls /tmp/wheelhouse && pip install --no-index --find-links=/tmp/wheelhouse pyodbc==4.0.32 cffi
+RUN ls /tmp/wheelhouse && pip install --find-links=/tmp/wheelhouse pyodbc==4.0.32 cffi
 RUN pip install cryptography==36.0.2 zeep==4.1.0
 WORKDIR /app
-COPY main.py pubkeys lang /app/
+COPY pubkeys /app/pubkeys
+COPY lang /app/lang
+COPY main.py .
 ENV PYTHONUNBUFFERED 1
 CMD ["python", "main.py"]
