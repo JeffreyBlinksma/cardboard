@@ -1,4 +1,4 @@
-FROM python:3.10.4-bullseye@sha256:4cba2f7f37c6d8e884045d7782e407593cddea864a3cd1f46d487aace865e323 AS builder
+FROM python:3.10.4-bullseye@sha256:9087640dab6b02f8a831a18fef5c756f33269fe53faa997533523912d27d61fb AS builder
 RUN apt-get update &&\
     apt-get install -y build-essential unixodbc-dev &&\
     python -m pip wheel --wheel-dir /tmp/wheelhouse pyodbc==4.0.32 &&\
