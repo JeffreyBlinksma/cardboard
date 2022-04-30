@@ -15,6 +15,7 @@ from cryptography.hazmat.primitives import hashes
 from cryptography.hazmat.primitives.asymmetric import padding
 from cryptography.hazmat.primitives import serialization 
 from cryptography import x509
+import cryptography.exceptions
 
 # Set variables
 StoredID = 0
@@ -39,14 +40,6 @@ with open("/run/secrets/keyfile", "rb") as f:
 with open("./pubkeys/sepay.pem", "rb") as f:
     sepaypubkey = x509.load_pem_x509_certificate(f.read()).public_key()
 
-# Signature verification code
-def verify_response(pubkey, signature, message):
-    try:
-        pubkey.verify(signature, str.encode(message), padding.PKCS1v15(), hashes.SHA256())
-        continue
-    except InvalidSignature:
-        print("Invalid Signature in response")
-        break
 # Load SOAP Client
 zeepclient = Client("https://wecr.sepay.nl/v2/wecr.asmx?WSDL")
 
@@ -119,6 +112,11 @@ while True:
                     RequestResult = zeepclient.service.StartTransaction(key_index=0, version="2", login=os.environ['MijnSepayUsername'], sid=int(os.environ['SID']), transactionref=TransactionRef, merchantref=str(row[0]), amount=ConvertedAmount, signature=SignatureSign)
 
                     ResponseSignatureData = f"{RequestResult['key_index']};{RequestResult['version']};{RequestResult['login']};{RequestResult['sid']};{RequestResult['transactionref']};{RequestResult['merchantref']};{RequestResult['amount']};{RequestResult['status']};{RequestResult['message']};{RequestResult['terminalip']};{RequestResult['terminalport']}"
+                    try:
+                        sepaypubkey.verify(RequestResult["signature"], str.encode(ResponseSignatureData), padding.PKCS1v15(), hashes.SHA256())
+                    except cryptography.exceptions.InvalidSignature:
+                        print("Received signature invalid.")
+                        break
 
                     # Check status code and retry if neccesary 
                     match RequestResult["status"]:
@@ -159,6 +157,13 @@ while True:
                         time.sleep(2)
 
                         RequestResult = zeepclient.service.StartTransaction(key_index=0, version="2", login=os.environ['MijnSepayUsername'], sid=int(os.environ['SID']), transactionref=TransactionRef, signature=SignatureSign)
+
+                        ResponseSignatureData = f"{RequestResult['key_index']};{RequestResult['version']};{RequestResult['login']};{RequestResult['sid']};{RequestResult['transactionref']};{RequestResult['merchantref']};{RequestResult['amount']};{RequestResult['transactiontime']};{RequestResult['transactionerror']};{RequestResult['transactionresult']};{RequestResult['status']};{RequestResult['message']};{RequestResult['brand']};{RequestResult['ticket']}"
+                        try:
+                            sepaypubkey.verify(RequestResult["signature"], str.encode(ResponseSignatureData), padding.PKCS1v15(), hashes.SHA256())
+                        except cryptography.exceptions.InvalidSignature:
+                            print("Received signature invalid.")
+                            break
 
                         match RequestResult["status"]:
                             case "00":
