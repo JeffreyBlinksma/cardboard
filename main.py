@@ -14,6 +14,7 @@ from cryptography.hazmat.backends import default_backend
 from cryptography.hazmat.primitives import hashes
 from cryptography.hazmat.primitives.asymmetric import padding
 from cryptography.hazmat.primitives import serialization 
+from cryptography import x509
 
 # Set variables
 StoredID = 0
@@ -34,6 +35,18 @@ with open("/run/secrets/keyfile", "rb") as f:
         backend=default_backend()
     )
 
+# Import other pubkeys
+with open("./pubkeys/sepay.pem", "rb") as f:
+    sepaypubkey = x509.load_pem_x509_certificate(f.read()).public_key()
+
+# Signature verification code
+def verify_response(pubkey, signature, message):
+    try:
+        pubkey.verify(signature, str.encode(message), padding.PKCS1v15(), hashes.SHA256())
+        continue
+    except InvalidSignature:
+        print("Invalid Signature in response")
+        break
 # Load SOAP Client
 zeepclient = Client("https://wecr.sepay.nl/v2/wecr.asmx?WSDL")
 
@@ -104,6 +117,8 @@ while True:
                     SignatureSign = pkey.sign(SignatureData.encode(), padding.PKCS1v15(), hashes.SHA256())
 
                     RequestResult = zeepclient.service.StartTransaction(key_index=0, version="2", login=os.environ['MijnSepayUsername'], sid=int(os.environ['SID']), transactionref=TransactionRef, merchantref=str(row[0]), amount=ConvertedAmount, signature=SignatureSign)
+
+                    ResponseSignatureData = f"{RequestResult['key_index']};{RequestResult['version']};{RequestResult['login']};{RequestResult['sid']};{RequestResult['transactionref']};{RequestResult['merchantref']};{RequestResult['amount']};{RequestResult['status']};{RequestResult['message']};{RequestResult['terminalip']};{RequestResult['terminalport']}"
 
                     # Check status code and retry if neccesary 
                     match RequestResult["status"]:
