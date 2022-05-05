@@ -1,10 +1,6 @@
-<<<<<<< Updated upstream
-FROM python:3.10.4-bullseye@sha256:58ab94abb421ddfbfa4b2318c41ac89b72ed7f76795fb15e9318f3c44a1e8895 AS builder
-=======
 #Build container
 FROM python:3.10.4-bullseye@sha256:9087640dab6b02f8a831a18fef5c756f33269fe53faa997533523912d27d61fb AS builder
 #Run apt update && apt install required packages for build container
->>>>>>> Stashed changes
 RUN apt-get update &&\
     apt-get install -y build-essential unixodbc-dev &&\
     python -m pip wheel --wheel-dir /tmp/wheelhouse pyodbc==4.0.32 &&\
