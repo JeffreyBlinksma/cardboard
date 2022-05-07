@@ -29,8 +29,8 @@ RUN ls /tmp/wheelhouse && pip install --find-links=/tmp/wheelhouse pyodbc==4.0.3
 #install other redependencies and copy application
 RUN pip install cryptography==36.0.2 zeep==4.1.0
 WORKDIR /app
-COPY pubkeys /app/pubkeys
-COPY lang /app/lang
 COPY main.py .
+COPY lang /app/lang
+COPY cardterminals /app/cardterminals
 ENV PYTHONUNBUFFERED 1
 CMD ["python", "main.py"]
