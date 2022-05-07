@@ -37,7 +37,7 @@ with open("/run/secrets/keyfile", "rb") as f:
     )
 
 # Import other pubkeys
-with open("./pubkeys/sepay.pem", "rb") as f:
+with open(os.path.join(os.path.dirname(__file__), "pubkeys", "sepay.pem"), "rb") as f:
     sepaypubkey = x509.load_pem_x509_certificate(f.read()).public_key()
 
 # Load SOAP Client
