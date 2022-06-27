@@ -1,5 +1,5 @@
 #Build container
-FROM python:3.10.4-bullseye@sha256:201d7bb6cae2c9a079ec6eda11044ca7bc7eebeb9de383afaf1f1757f3df2b40 AS builder
+FROM python:3.10.5-bullseye@sha256:c9c129ca05303bb806e6a3a4ad9cbe50bc5b91b4d1a9031c1c9626e200599784 AS builder
 
 #Run apt update && apt install and build pyodbc and cffi as wheels
 RUN apt-get update &&\
