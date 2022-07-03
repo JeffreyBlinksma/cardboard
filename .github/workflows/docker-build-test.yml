@@ -6,6 +6,9 @@ on:
     types: [opened, reopened]
     
 
+permissions:
+  contents: read
+
 jobs:
 
   build:
