@@ -99,71 +99,66 @@ while True:
     time.sleep(1)
 
     # Grab last entry from Payment, and print the DocumentID, PaymentTypeID and Amount
-    cursor.execute("SELECT Id, PaymentTypeID, Amount FROM dbo.Payment ORDER BY DocumentID DESC")
+    cursor.execute("SELECT Id, PaymentTypeID, Amount, TransactionStatus FROM dbo.Payment ORDER BY DocumentID DESC")
     row = cursor.fetchone()
 
-    if StoredID == 0:
-        StoredID = row[0]
-    
-    else:
-        if StoredID < row[0]:
-            StoredID = row[0]
+    if str(row[1]) == os.environ['PaymentID']:
 
-            if str(row[1]) == os.environ['PaymentID']:
+        if row[3] != None:
 
-                # Generate TransactionRef
-                TransactionRef = ''.join(random.choices(string.ascii_uppercase + string.digits, k=9))
+            # Generate TransactionRef
+            TransactionRef = ''.join(random.choices(string.ascii_uppercase + string.digits, k=9))
 
-                # Stage 1
+            # Stage 1
+            while True:
+
+                # Start Transaction
+                stage1Interaction = stage1(TransactionRef, row[0], row[2])
+
+                if stage1Interaction["success"] == True:
+                    cursor.execute("UPDATE dbo.Payment SET TransactionID = ?, TransactionStatus = 2, TransactionTerminalType = ?, TransactionTerminalIP = ?, TransactionTerminalPort = ? WHERE Id = ?", TransactionRef, "sepay", stage1Interaction["terminalip"], stage1Interaction["terminalport"], row[0])
+                    cnxn.commit()
+                    break
+
+                elif stage1Interaction["success"] == False:
+                    cursor.execute("UPDATE dbo.Payment SET TransactionID = ?, TransactionStatus = 4 WHERE Id = ?", TransactionRef, row[0])
+                    cnxn.commit()
+                    break
+            
+            # Stage 2
+            if stage1Interaction["success"] == True:
                 while True:
 
-                    # Start Transaction
-                    stage1Interaction = stage1(TransactionRef, row[0], row[2])
+                    # Get Transaction Status
+                    stage2Interaction = stage2(TransactionRef)
+                    if stage2Interaction["success"] == True and stage2Interaction["transactionstatus"] == "succeeded":
+                        cursor.execute("UPDATE dbo.Payment SET TransactionStatus = 1, TransactionDateTime = ?, TransactionCard = ?, TransactionTicket = ? WHERE Id = ?", stage2Interaction["transactiontime"], stage2Interaction["brand"], stage2Interaction["receipt"], row[0])
+                        cnxn.commit()
+                        break
+                    
+                    elif stage2Interaction["success"] == True and stage2Interaction["transactionstatus"] == "inprogressnoinfo":
+                        cursor.execute("UPDATE dbo.Payment SET TransactionStatus = 2 WHERE Id = ?", row[0])
+                        cnxn.commit()
 
-                    if stage1Interaction["success"] == True:
-                        cursor.execute("UPDATE dbo.Payment SET TransactionID = ?, TransactionStatus = 2, TransactionTerminalType = ?, TransactionTerminalIP = ?, TransactionTerminalPort = ? WHERE Id = ?", TransactionRef, "sepay", stage1Interaction["terminalip"], stage1Interaction["terminalport"], row[0])
+                    elif stage2Interaction["success"] == True and stage2Interaction["transactionstatus"] == "inprogress":
+                        if stage2Interaction["receipt"] != None:
+                            cursor.execute("UPDATE dbo.Payment SET TransactionStatus = 2, TransactionDateTime = ?, TransactionCard = ?, TransactionTicket = ? WHERE Id = ?", stage2Interaction["transactiontime"], stage2Interaction["brand"], stage2Interaction["receipt"], row[0])
+                            cnxn.commit()
+                        else:
+                            cursor.execute("UPDATE dbo.Payment SET TransactionStatus = 2, TransactionDateTime = ?, TransactionCard = ? WHERE Id = ?", stage2Interaction["transactiontime"], stage2Interaction["brand"], row[0])
+                            cnxn.commit()
+                    
+                    elif stage2Interaction["success"] == True and stage2Interaction["transactionstatus"] == "failed":
+                        cursor.execute("UPDATE dbo.Payment SET TransactionStatus = 3, TransactionError = ? WHERE Id = ?", stage2Interaction["error"], row[0])
                         cnxn.commit()
                         break
 
-                    elif stage1Interaction["success"] == False:
-                        cursor.execute("UPDATE dbo.Payment SET TransactionID = ?, TransactionStatus = 4 WHERE Id = ?", TransactionRef, row[0])
+                    elif stage2Interaction["success"] == True and stage2Interaction["transactionstatus"] == "canceled":
+                        cursor.execute("UPDATE dbo.Payment SET TransactionStatus = 5 WHERE Id = ?", row[0])
                         cnxn.commit()
                         break
-                
-                # Stage 2
-                if stage1Interaction["success"] == True:
-                    while True:
 
-                        # Get Transaction Status
-                        stage2Interaction = stage2(TransactionRef)
-                        if stage2Interaction["success"] == True and stage2Interaction["transactionstatus"] == "succeeded":
-                            cursor.execute("UPDATE dbo.Payment SET TransactionStatus = 1, TransactionDateTime = ?, TransactionCard = ?, TransactionTicket = ? WHERE Id = ?", stage2Interaction["transactiontime"], stage2Interaction["brand"], stage2Interaction["receipt"], row[0])
-                            cnxn.commit()
-                            break
-                        
-                        elif stage2Interaction["success"] == True and stage2Interaction["transactionstatus"] == "inprogressnoinfo":
-                            cursor.execute("UPDATE dbo.Payment SET TransactionStatus = 2 WHERE Id = ?", row[0])
-                            cnxn.commit()
-
-                        elif stage2Interaction["success"] == True and stage2Interaction["transactionstatus"] == "inprogress":
-                            if stage2Interaction["receipt"] != None:
-                                cursor.execute("UPDATE dbo.Payment SET TransactionStatus = 2, TransactionDateTime = ?, TransactionCard = ?, TransactionTicket = ? WHERE Id = ?", stage2Interaction["transactiontime"], stage2Interaction["brand"], stage2Interaction["receipt"], row[0])
-                                cnxn.commit()
-                            else:
-                                cursor.execute("UPDATE dbo.Payment SET TransactionStatus = 2, TransactionDateTime = ?, TransactionCard = ? WHERE Id = ?", stage2Interaction["transactiontime"], stage2Interaction["brand"], row[0])
-                                cnxn.commit()
-                        
-                        elif stage2Interaction["success"] == True and stage2Interaction["transactionstatus"] == "failed":
-                            cursor.execute("UPDATE dbo.Payment SET TransactionStatus = 3, TransactionError = ? WHERE Id = ?", stage2Interaction["error"], row[0])
-                            cnxn.commit()
-                            break
-
-                        elif stage2Interaction["success"] == True and stage2Interaction["transactionstatus"] == "canceled":
-                            cursor.execute("UPDATE dbo.Payment SET TransactionStatus = 5 WHERE Id = ?", row[0])
-                            cnxn.commit()
-                            break
-
-                        elif stage2Interaction["success"] == False:
-                            cursor.execute("UPDATE dbo.Payment SET TransactionStatus = 4 WHERE Id = ?", row[0])
-                            cnxn.commit()
-                            break
+                    elif stage2Interaction["success"] == False:
+                        cursor.execute("UPDATE dbo.Payment SET TransactionStatus = 4 WHERE Id = ?", row[0])
+                        cnxn.commit()
+                        break
