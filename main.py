@@ -51,7 +51,7 @@ database = os.environ['SQLDatabase']
 username = os.environ['SQLUsername']
 password = os.environ['SQLPassword']
 
-cnxn = pyodbc.connect('DRIVER={ODBC Driver 17 for SQL Server};SERVER='+server+';DATABASE='+database+';UID='+username+';PWD='+password)
+cnxn = pyodbc.connect('DRIVER={ODBC Driver 18 for SQL Server};SERVER='+server+';DATABASE='+database+';UID='+username+';PWD='+password+';TrustServerCertificate=yes')
 cursor = cnxn.cursor()
 cursor.execute('SET NOCOUNT ON')
 
@@ -146,8 +146,12 @@ while True:
                             cnxn.commit()
 
                         elif stage2Interaction["success"] == True and stage2Interaction["transactionstatus"] == "inprogress":
-                            cursor.execute("UPDATE dbo.Payment SET TransactionStatus = 2, TransactionDateTime = ?, TransactionCard = ? WHERE Id = ?", stage2Interaction["transactiontime"], stage2Interaction["brand"], row[0])
-                            cnxn.commit()
+                            if stage2Interaction["receipt"] != None:
+                                cursor.execute("UPDATE dbo.Payment SET TransactionStatus = 2, TransactionDateTime = ?, TransactionCard = ?, TransactionTicket = ? WHERE Id = ?", stage2Interaction["transactiontime"], stage2Interaction["brand"], stage2Interaction["receipt"], row[0])
+                                cnxn.commit()
+                            else:
+                                cursor.execute("UPDATE dbo.Payment SET TransactionStatus = 2, TransactionDateTime = ?, TransactionCard = ? WHERE Id = ?", stage2Interaction["transactiontime"], stage2Interaction["brand"], row[0])
+                                cnxn.commit()
                         
                         elif stage2Interaction["success"] == True and stage2Interaction["transactionstatus"] == "failed":
                             cursor.execute("UPDATE dbo.Payment SET TransactionStatus = 3, TransactionError = ? WHERE Id = ?", stage2Interaction["error"], row[0])
