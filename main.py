@@ -141,12 +141,16 @@ while True:
                         cnxn.commit()
 
                     elif stage2Interaction["success"] == True and stage2Interaction["transactionstatus"] == "inprogress":
-                        if stage2Interaction["receipt"] != None:
-                            cursor.execute("UPDATE dbo.Payment SET TransactionStatus = 2, TransactionDateTime = ?, TransactionCard = ?, TransactionTicket = ? WHERE Id = ?", stage2Interaction["transactiontime"], stage2Interaction["brand"], stage2Interaction["receipt"], row[0])
-                            cnxn.commit()
-                        else:
-                            cursor.execute("UPDATE dbo.Payment SET TransactionStatus = 2, TransactionDateTime = ?, TransactionCard = ? WHERE Id = ?", stage2Interaction["transactiontime"], stage2Interaction["brand"], row[0])
-                            cnxn.commit()
+                        try:
+                            if stage2Interaction["receipt"] != None:
+                                cursor.execute("UPDATE dbo.Payment SET TransactionStatus = 2, TransactionDateTime = ?, TransactionCard = ?, TransactionTicket = ? WHERE Id = ?", stage2Interaction["transactiontime"], stage2Interaction["brand"], stage2Interaction["receipt"], row[0])
+                                cnxn.commit()
+                            else:
+                                cursor.execute("UPDATE dbo.Payment SET TransactionStatus = 2, TransactionDateTime = ?, TransactionCard = ? WHERE Id = ?", stage2Interaction["transactiontime"], stage2Interaction["brand"], row[0])
+                                cnxn.commit()
+                        except KeyError:
+                                cursor.execute("UPDATE dbo.Payment SET TransactionStatus = 2, TransactionDateTime = ?, TransactionCard = ? WHERE Id = ?", stage2Interaction["transactiontime"], stage2Interaction["brand"], row[0])
+                                cnxn.commit()
                     
                     elif stage2Interaction["success"] == True and stage2Interaction["transactionstatus"] == "failed":
                         cursor.execute("UPDATE dbo.Payment SET TransactionStatus = 3, TransactionError = ? WHERE Id = ?", stage2Interaction["error"], row[0])
