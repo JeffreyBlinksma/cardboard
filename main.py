@@ -104,7 +104,7 @@ while True:
 
     if str(row[1]) == os.environ['PaymentID']:
 
-        if row[3] != None:
+        if row[3] == None:
 
             # Generate TransactionRef
             TransactionRef = ''.join(random.choices(string.ascii_uppercase + string.digits, k=9))
