@@ -1,2 +1,2 @@
 cryptography==37.0.4
-zeep==4.1.0
+zeep==4.2.0
