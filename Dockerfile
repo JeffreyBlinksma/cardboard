@@ -4,8 +4,7 @@ FROM python:3.11.0-bullseye@sha256:c9d5243be5cc5c7fd917eb6aa9b209d2c849c1661aff9
 #Run apt update && apt install and build pyodbc and cffi as wheels
 RUN apt-get update &&\
     apt-get install -y build-essential unixodbc-dev &&\
-    python -m pip wheel --no-binary :all: --wheel-dir /tmp/wheelhouse pyodbc==4.0.35 &&\
-    python -m pip wheel --no-binary :all: --wheel-dir /tmp/wheelhouse cffi
+    python -m pip wheel --no-binary :all: --wheel-dir /tmp/wheelhouse pyodbc==4.0.35 cffi
 
 #App container
 FROM python:3.11.0-alpine3.17@sha256:c3fb62c64498a1fe5640fe8d9d8f127680d889049649d5df6ee0a01f39f8fcac
