@@ -8,7 +8,7 @@ RUN apt-get update &&\
     python -m pip wheel --no-binary :all: --wheel-dir /tmp/wheelhouse cffi
 
 #App container
-FROM python:3.10.4-alpine3.15@sha256:2cca1fb3c699208f929afd487be37ddc97c531648c404f3df78fb25a0ff344a2
+FROM python:3.11.0-alpine3.17@sha256:c3fb62c64498a1fe5640fe8d9d8f127680d889049649d5df6ee0a01f39f8fcac
 
 ENV ACCEPT_EULA=Y
 #Run apk add with no caching && install MS SQL ODBC Driver v18
