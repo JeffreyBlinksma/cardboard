@@ -24,7 +24,7 @@ RUN \
 
 #Copy pyodbc and cffi wheels to app container, and install them
 COPY --from=builder /tmp/wheelhouse /tmp/wheelhouse
-RUN ls /tmp/wheelhouse && pip install --find-links=/tmp/wheelhouse pyodbc==4.0.35 cffi
+RUN ls /tmp/wheelhouse && pip install --no-cache-dir --no-index --find-links=/tmp/wheelhouse pyodbc==4.0.35 cffi
 
 #install other redependencies and copy application
 RUN pip install cryptography==36.0.2 zeep==4.1.0
