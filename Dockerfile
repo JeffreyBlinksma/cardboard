@@ -14,9 +14,8 @@ RUN \
     apk del curl gnupg
 
 #install other redependencies and copy application
-WORKDIR /app
-COPY requirements.txt /app/requirements.txt
 RUN pip install -r requirements.txt
+WORKDIR /app
 COPY pubkeys /app/pubkeys
 COPY lang /app/lang
 COPY main.py .
