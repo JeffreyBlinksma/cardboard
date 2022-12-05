@@ -15,6 +15,9 @@ RUN \
 
 #install other redependencies and copy application
 WORKDIR /app
+RUN curl https://files.pythonhosted.org/packages/80/cc/5d602c4326af9993f891eab1f25bd967f89785efc08a773353564cab2f01/pyodbc-4.0.35-cp311-cp311-manylinux_2_17_x86_64.manylinux2014_x86_64.whl -o pyodbc-4.0.35-cp311-cp311-manylinux_2_17_x86_64.manylinux2014_x86_64.whl &&\
+    pip install pyodbc-4.0.35-cp311-cp311-manylinux_2_17_x86_64.manylinux2014_x86_64.whl &&\
+    rm pyodbc-4.0.35-cp311-cp311-manylinux_2_17_x86_64.manylinux2014_x86_64.whl
 COPY requirements.txt /app/requirements.txt
 RUN pip install -r requirements.txt
 COPY pubkeys /app/pubkeys
