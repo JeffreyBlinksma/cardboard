@@ -1,25 +1,16 @@
 # Import dependencies
-from asyncore import write
 import time
 import pyodbc
 import string
 import random
-import os
 import logging.config
 import json
 import gettext
 from cardterminals.sepay import *
+import re
 
 # Set variables
 StoredID = 0
-TransactionerrorCodes = json.load(open("./lang/Transactionerror/en_US.json"))
-
-# Set the local directory
-localedir = './locale'
-
-# Set up your magic function
-translate = gettext.translation('appname', localedir, fallback=True)
-_ = translate.gettext
 
 # Debug
 if os.environ['DEBUG'] == "true":
@@ -75,31 +66,12 @@ cursor.execute("""BEGIN TRANSACTION
                         TransactionTerminalPort int NULL""")
 cnxn.commit()
 
-# Send translation files
-cursor.execute("""
-                    BEGIN TRANSACTION
-                    IF NOT EXISTS (
-                        SELECT * 
-                        FROM INFORMATION_SCHEMA.TABLES 
-                        WHERE TABLE_SCHEMA = 'dbo' 
-                        AND TABLE_NAME = 'CardboardClientTranslations'
-                    )
-                    CREATE TABLE dbo.CardboardClientTranslations
-                        (
-                        lang nchar(10) NULL,
-                        main varbinary(MAX) NULL
-                        )  ON [PRIMARY]
-                        TEXTIMAGE_ON [PRIMARY]
-                    ALTER TABLE dbo.CardboardClientTranslations SET (LOCK_ESCALATION = TABLE)
-                    """)
-cnxn.commit()
-
 while True:
 
     time.sleep(1)
 
     # Grab last entry from Payment, and print the DocumentID, PaymentTypeID and Amount
-    cursor.execute("SELECT Id, PaymentTypeID, Amount, TransactionStatus FROM dbo.Payment ORDER BY DocumentID DESC")
+    cursor.execute("SELECT Id, PaymentTypeID, Amount, TransactionStatus, DocumentID FROM dbo.Payment ORDER BY DocumentID DESC")
     row = cursor.fetchone()
 
     if str(row[1]) == os.environ['PaymentID']:
@@ -133,6 +105,56 @@ while True:
                     stage2Interaction = stage2(TransactionRef)
                     if stage2Interaction["success"] == True and stage2Interaction["transactionstatus"] == "succeeded":
                         cursor.execute("UPDATE dbo.Payment SET TransactionStatus = 1, TransactionDateTime = ?, TransactionCard = ?, TransactionTicket = ? WHERE Id = ?", stage2Interaction["transactiontime"], stage2Interaction["brand"], stage2Interaction["receipt"], row[0])
+                        datasplit = re.split('(\@RS)|(\@LF)|(\@SS)|(\@SM)|(\@SL)|(\@HT)|(\@AR)|(\@AM)|(\@@)|(       )', stage2Interaction["receipt"])
+                        datatoprint = list(filter(None, datasplit))
+                        PrintedLines = 0
+                        LineCounter = 0
+                        TabAmount = 0
+                        InternalNoteData = r"""{\rtf1\ansi\ansicpg1252\deff0\nouicompat\deflang1043\deflangfe1043\deftab709{\fonttbl{\f0\fswiss\fprq2\fcharset0 Tahoma;}}
+                        {\*\generator Riched20 10.0.22000}{\*\mmathPr\mnaryLim0\mdispDef1\mwrapIndent1440 }\viewkind4\uc1 
+                        \pard\widctlpar\slmult1\tqc\tx1985\tqr\tx3969\f0\fs18"""
+                        for x in datatoprint:
+                            print(LineCounter)
+                            print(x)
+                            if datatoprint[LineCounter] == '@RS':
+                                InternalNoteData += "\\b0\\fs18\ql "
+                                TabAmount = 0
+                            elif datatoprint[LineCounter] == '@LF':
+                                InternalNoteData += "\par\n"
+                            elif datatoprint[LineCounter] == '@SS':
+                                InternalNoteData += "\\b0\\fs18 "
+                            elif datatoprint[LineCounter] == '@SM':
+                                InternalNoteData += "\\b0\\fs20 "
+                            elif datatoprint[LineCounter] == '@SL':
+                                InternalNoteData += "\\b\\fs22 "
+                            elif datatoprint[LineCounter] == '@HT':
+                                InternalNoteData += "\\tab "
+                            elif datatoprint[LineCounter] == '@AR':
+                                if TabAmount == 0:
+                                    InternalNoteData += "\\tab\\tab "
+                                    TabAmount = 2
+                                elif TabAmount == 1:
+                                    InternalNoteData += "\\tab "
+                                    TabAmount = 2
+                                elif TabAmount == 2:
+                                    InternalNoteData += ""
+                            elif datatoprint[LineCounter] == '@AM':
+                                if TabAmount == 0:
+                                    InternalNoteData += "\\tab "
+                                    TabAmount = 1
+                                else:
+                                    InternalNoteData += ""
+                            elif datatoprint[LineCounter] == '@@':
+                                InternalNoteData += "@"
+                            elif datatoprint[LineCounter] == '       ':
+                                InternalNoteData += "\par\n"
+                                TabAmount = 0
+                            else:
+                                InternalNoteData += datatoprint[LineCounter]
+                            LineCounter = LineCounter + 1
+                        InternalNoteData += "}"
+                        print(InternalNoteData)
+                        cursor.execute("UPDATE dbo.Document SET CardTerminalReceipt = ? WHERE Id = ?", InternalNoteData, row[4])
                         cnxn.commit()
                         break
                     
@@ -144,6 +166,56 @@ while True:
                         try:
                             if stage2Interaction["receipt"] != None:
                                 cursor.execute("UPDATE dbo.Payment SET TransactionStatus = 2, TransactionDateTime = ?, TransactionCard = ?, TransactionTicket = ? WHERE Id = ?", stage2Interaction["transactiontime"], stage2Interaction["brand"], stage2Interaction["receipt"], row[0])
+                                datasplit = re.split('(\@RS)|(\@LF)|(\@SS)|(\@SM)|(\@SL)|(\@HT)|(\@AR)|(\@AM)|(\@@)|(       )', stage2Interaction["receipt"])
+                                datatoprint = list(filter(None, datasplit))
+                                PrintedLines = 0
+                                LineCounter = 0
+                                TabAmount = 0
+                                InternalNoteData = r"""{\rtf1\ansi\ansicpg1252\deff0\nouicompat\deflang1043\deflangfe1043\deftab709{\fonttbl{\f0\fswiss\fprq2\fcharset0 Tahoma;}}
+                                {\*\generator Riched20 10.0.22000}{\*\mmathPr\mnaryLim0\mdispDef1\mwrapIndent1440 }\viewkind4\uc1 
+                                \pard\widctlpar\slmult1\tqc\tx1985\tqr\tx3969\f0\fs18"""
+                                for x in datatoprint:
+                                    print(LineCounter)
+                                    print(x)
+                                    if datatoprint[LineCounter] == '@RS':
+                                        InternalNoteData += "\\b0\\fs18\ql "
+                                        TabAmount = 0
+                                    elif datatoprint[LineCounter] == '@LF':
+                                        InternalNoteData += "\par\n"
+                                        TabAmount = 0
+                                    elif datatoprint[LineCounter] == '@SS':
+                                        InternalNoteData += "\\b0\\fs18 "
+                                    elif datatoprint[LineCounter] == '@SM':
+                                        InternalNoteData += "\\b0\\fs20 "
+                                    elif datatoprint[LineCounter] == '@SL':
+                                        InternalNoteData += "\\b\\fs22 "
+                                    elif datatoprint[LineCounter] == '@HT':
+                                        InternalNoteData += "\\tab "
+                                    elif datatoprint[LineCounter] == '@AR':
+                                        if TabAmount == 0:
+                                            InternalNoteData += "\\tab\\tab "
+                                            TabAmount = 2
+                                        elif TabAmount == 1:
+                                            InternalNoteData += "\\tab "
+                                            TabAmount = 2
+                                        elif TabAmount == 2:
+                                            InternalNoteData += ""
+                                    elif datatoprint[LineCounter] == '@AM':
+                                        if TabAmount == 0:
+                                            InternalNoteData += "\\tab "
+                                            TabAmount = 1
+                                        else:
+                                            InternalNoteData += ""
+                                    elif datatoprint[LineCounter] == '@@':
+                                        InternalNoteData += "@"
+                                    elif datatoprint[LineCounter] == '       ':
+                                        InternalNoteData += "\par\n"
+                                    else:
+                                        InternalNoteData += datatoprint[LineCounter]
+                                    LineCounter = LineCounter + 1
+                                InternalNoteData += "}"
+                                print(InternalNoteData)
+                                cursor.execute("UPDATE dbo.Document SET CardTerminalReceipt = ? WHERE Id = ?", InternalNoteData, row[4])
                                 cnxn.commit()
                             else:
                                 cursor.execute("UPDATE dbo.Payment SET TransactionStatus = 2, TransactionDateTime = ?, TransactionCard = ? WHERE Id = ?", stage2Interaction["transactiontime"], stage2Interaction["brand"], row[0])

@@ -1,14 +1,11 @@
 #Build container
-FROM python:3.10.4-bullseye@sha256:58ab94abb421ddfbfa4b2318c41ac89b72ed7f76795fb15e9318f3c44a1e8895 AS builder
 
 #Run apt update && apt install and build pyodbc and cffi as wheels
 RUN apt-get update &&\
     apt-get install -y build-essential unixodbc-dev &&\
-    python -m pip wheel --wheel-dir /tmp/wheelhouse pyodbc==4.0.32 &&\
-    python -m pip wheel --no-binary :all: --wheel-dir /tmp/wheelhouse cffi
+    python -m pip wheel --no-binary :all: --wheel-dir /tmp/wheelhouse requirements-build.txt
 
 #App container
-FROM python:3.10.4-alpine3.15@sha256:2cca1fb3c699208f929afd487be37ddc97c531648c404f3df78fb25a0ff344a2
 
 ENV ACCEPT_EULA=Y
 #Run apk add with no caching && install MS SQL ODBC Driver v18
@@ -24,13 +21,14 @@ RUN \
 
 #Copy pyodbc and cffi wheels to app container, and install them
 COPY --from=builder /tmp/wheelhouse /tmp/wheelhouse
-RUN ls /tmp/wheelhouse && pip install --find-links=/tmp/wheelhouse pyodbc==4.0.32 cffi
+RUN ls /tmp/wheelhouse && pip install --no-cache-dir --no-index --find-links=/tmp/wheelhouse -r requirements-build.txt
 
 #install other redependencies and copy application
-RUN pip install cryptography==36.0.2 zeep==4.1.0
+COPY requirements.txt .
+RUN pip install -r requirements.txt
 WORKDIR /app
-COPY main.py .
+COPY pubkeys /app/pubkeys
 COPY lang /app/lang
-COPY cardterminals /app/cardterminals
+COPY main.py .
 ENV PYTHONUNBUFFERED 1
 CMD ["python", "main.py"]
