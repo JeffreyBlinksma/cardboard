@@ -31,8 +31,7 @@ RUN ls /tmp/wheelhouse && pip install --no-cache-dir --no-index --find-links=/tm
 COPY requirements.txt .
 RUN pip install -r requirements.txt
 WORKDIR /app
-COPY pubkeys /app/pubkeys
-COPY lang /app/lang
+COPY cardterminals /app/cardterminals
 COPY main.py .
 ENV PYTHONUNBUFFERED 1
 CMD ["python", "main.py"]
