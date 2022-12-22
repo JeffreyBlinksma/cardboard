@@ -2,6 +2,7 @@
 FROM python:3.11.1-bullseye@sha256:3f6813d830f7d841ef03d6a27e276c50b6eefbfe035f8cd81936a4d2b04361b9 AS builder
 
 #Run apt update && apt install and build pyodbc and cffi as wheels
+COPY requirements-build.txt .
 RUN apt-get update &&\
     apt-get install -y build-essential unixodbc-dev &&\
     python -m pip wheel --no-binary :all: --wheel-dir /tmp/wheelhouse -r requirements-build.txt
@@ -22,6 +23,7 @@ RUN \
     apk del curl gnupg
 
 #Copy pyodbc and cffi wheels to app container, and install them
+COPY requirements-build.txt .
 COPY --from=builder /tmp/wheelhouse /tmp/wheelhouse
 RUN ls /tmp/wheelhouse && pip install --no-cache-dir --no-index --find-links=/tmp/wheelhouse -r requirements-build.txt
 
