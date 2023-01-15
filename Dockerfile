@@ -30,7 +30,6 @@ COPY --from=builder /tmp/wheelhouse /tmp/wheelhouse
 RUN ls /tmp/wheelhouse && pip install --no-cache-dir --no-index --find-links=/tmp/wheelhouse -r requirements-build.txt
 
 #install other redependencies and copy application
-WORKDIR /
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 WORKDIR /app
