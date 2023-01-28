@@ -39,9 +39,9 @@ def stage1(TransactionRef, MerchantRef, Amount):
         stage1Request = zeepclient.service.StartTransaction(key_index=0, version="2", login=os.environ['MijnSepayUsername'], sid=int(os.environ['SID']), transactionref=TransactionRef, merchantref=str(MerchantRef), amount=convertedAmount, signature=signatureSign)
             
         print(stage1Request["signature"])
-        ResponseSignatureData = f"{stage1Request['key_index']};{stage1Request['version']};{stage1Request['login']};{stage1Request['sid']};{stage1Request['transactionref']};{stage1Request['merchantref']};{'{:.2f}'.format(stage1Request['amount'])};{stage1Request['status']};{stage1Request['message']};{stage1Request['terminalip']};{stage1Request['terminalport']}"
+        ResponseSignatureData = f"{stage1Request['key_index']};{stage1Request['version']};{stage1Request['login']};{stage1Request['sid']};{stage1Request['transactionref']};{stage1Request['merchantref'] or ''};{'{:.2f}'.format(stage1Request['amount'])};{stage1Request['status']};{stage1Request['message'] or ''};{stage1Request['terminalip'] or ''};{stage1Request['terminalport'] or ''}"
         try:
-            sepaypubkey.verify(base64.b64decode(stage1Request["signature"], ResponseSignatureData.encode(), padding.PKCS1v15(), hashes.SHA256()))
+            sepaypubkey.verify(base64.b64decode(stage1Request["signature"]), ResponseSignatureData.encode(), padding.PKCS1v15(), hashes.SHA256())
         except cryptography.exceptions.InvalidSignature:
             print("Received signature invalid.")
             return {"success": False, "inform": True, "error": "Received signature failed"}
@@ -80,9 +80,10 @@ def stage2(TransactionRef):
         time.sleep(2)
         stage2Request = zeepclient.service.GetTransactionStatus(key_index=0, version="2", login=os.environ['MijnSepayUsername'], sid=int(os.environ['SID']), transactionref=TransactionRef, timeout=0, signature=signatureSign)
 
-        ResponseSignatureData = f"{stage2Request['key_index']};{stage2Request['version']};{stage2Request['login']};{stage2Request['sid']};{stage2Request['transactionref']};{stage2Request['merchantref']};{'{:.2f}'.format(stage2Request['amount'])};{stage2Request['transactiontime']};{stage2Request['transactionerror']};{stage2Request['transactionresult']};{stage2Request['status']};{stage2Request['message']};{stage2Request['brand']};{stage2Request['ticket']}"
+        ResponseSignatureData = f"{stage2Request['key_index']};{stage2Request['version']};{stage2Request['login']};{stage2Request['sid']};{stage2Request['transactionref']};{stage2Request['merchantref'] or ''};{'{:.2f}'.format(stage2Request['amount'])};{stage2Request['transactiontime'] or ''};{stage2Request['transactionerror'] or ''};{stage2Request['transactionresult'] or ''};{stage2Request['status']};{stage2Request['message'] or ''};{stage2Request['brand'] or ''};{stage2Request['ticket'] or ''}"
+        print(ResponseSignatureData)
         try:
-            sepaypubkey.verify(stage2Request["signature"], str.encode(ResponseSignatureData), padding.PKCS1v15(), hashes.SHA256())
+            sepaypubkey.verify(base64.b64decode(stage2Request["signature"]), ResponseSignatureData.encode(), padding.PKCS1v15(), hashes.SHA256())
         except cryptography.exceptions.InvalidSignature:
             print("Received signature invalid.")
             return {"success": False, "inform": True, "error": "Received signature failed"}
