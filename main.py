@@ -3,51 +3,17 @@ import time
 import pyodbc
 import string
 import random
-from zeep import Client
-import os
 import logging.config
-import requests
 import json
-import urllib.parse
 import gettext
-from cryptography.hazmat.backends import default_backend
-from cryptography.hazmat.primitives import hashes
-from cryptography.hazmat.primitives.asymmetric import padding
-from cryptography.hazmat.primitives import serialization 
-from cryptography import x509
-import cryptography.exceptions
+from cardterminals.sepay import *
+import re
 
 # Set variables
 StoredID = 0
-TransactionerrorCodes = json.load(open("./lang/Transactionerror/en_US.json"))
-
-# Set the local directory
-localedir = './locale'
-
-# Set up your magic function
-translate = gettext.translation('appname', localedir, fallback=True)
-_ = translate.gettext
-
-# Import private key
-with open("/run/secrets/keyfile", "rb") as f:
-    pkey = serialization.load_pem_private_key(
-        f.read(),
-        password=None,
-        backend=default_backend()
-    )
-
-# Import other pubkeys
-with open(os.path.join(os.path.dirname(__file__), "pubkeys", "sepay.pem"), "rb") as f:
-    sepaypubkey = x509.load_pem_x509_certificate(f.read()).public_key()
-
-# Load SOAP Client
-zeepclient = Client("https://wecr.sepay.nl/v2/wecr.asmx?WSDL")
-
-if os.environ['Messaging'] == 'msteams':
-    headers = {'Content-Type': 'application/json'}
 
 # Debug
-if os.environ['DEBUG'] == True:
+if os.environ['DEBUG'] == "true":
     logging.config.dictConfig({
         'version': 1,
         'formatters': {
@@ -76,134 +42,201 @@ database = os.environ['SQLDatabase']
 username = os.environ['SQLUsername']
 password = os.environ['SQLPassword']
 
-cnxn = pyodbc.connect('DRIVER={ODBC Driver 17 for SQL Server};SERVER='+server+';DATABASE='+database+';UID='+username+';PWD='+password)
+cnxn = pyodbc.connect('DRIVER={ODBC Driver 18 for SQL Server};SERVER='+server+';DATABASE='+database+';UID='+username+';PWD='+password+';TrustServerCertificate=yes')
 cursor = cnxn.cursor()
+cursor.execute('SET NOCOUNT ON')
+
+# Prepare Database if not prepared yet
+cursor.execute("""BEGIN TRANSACTION
+                    IF NOT EXISTS (
+                        SELECT * 
+                        FROM   sys.columns 
+                        WHERE  object_id = OBJECT_ID(N'dbo.Payment') 
+                        AND name = 'TransactionID'
+                    )
+                    ALTER TABLE dbo.Payment ADD
+                        TransactionID varchar(255) NULL,
+                        TransactionDateTime datetime NULL,
+                        TransactionStatus int NULL,
+                        TransactionError nvarchar(MAX) NULL,
+                        TransactionCard nvarchar(512) NULL,
+                        TransactionTicket nvarchar(MAX) NULL,
+                        TransactionTerminalType nvarchar(512) NULL,
+                        TransactionTerminalIP varchar(15) NULL,
+                        TransactionTerminalPort int NULL""")
+cnxn.commit()
 
 while True:
 
     time.sleep(1)
 
     # Grab last entry from Payment, and print the DocumentID, PaymentTypeID and Amount
-    cursor.execute("SELECT DocumentID, PaymentTypeID, Amount FROM dbo.Payment ORDER BY DocumentID DESC")
+    cursor.execute("SELECT Id, PaymentTypeID, Amount, TransactionStatus, DocumentID FROM dbo.Payment ORDER BY DocumentID DESC")
     row = cursor.fetchone()
 
-    if StoredID == 0:
-        StoredID = row[0]
-    
-    else:
-        if StoredID < row[0]:
-            StoredID = row[0]
+    if str(row[1]) == os.environ['PaymentID']:
 
-            if row[1] == os.environ['PaymentID']:
-                
+        if row[3] == None:
+
+            # Generate TransactionRef
+            TransactionRef = ''.join(random.choices(string.ascii_uppercase + string.digits, k=9))
+
+            # Stage 1
+            while True:
+
                 # Start Transaction
+                stage1Interaction = stage1(TransactionRef, row[0], row[2])
+
+                if stage1Interaction["success"] == True:
+                    cursor.execute("UPDATE dbo.Payment SET TransactionID = ?, TransactionStatus = 2, TransactionTerminalType = ?, TransactionTerminalIP = ?, TransactionTerminalPort = ? WHERE Id = ?", TransactionRef, "sepay", stage1Interaction["terminalip"], stage1Interaction["terminalport"], row[0])
+                    cnxn.commit()
+                    break
+
+                elif stage1Interaction["success"] == False:
+                    cursor.execute("UPDATE dbo.Payment SET TransactionID = ?, TransactionStatus = 4 WHERE Id = ?", TransactionRef, row[0])
+                    cnxn.commit()
+                    break
+            
+            # Stage 2
+            if stage1Interaction["success"] == True:
                 while True:
-                
-                    # Convert Amount into string with 2 decimals, as required by the API
-                    ConvertedAmount = "{:.2f}".format(row[2])
 
-                    # Generate TransactionRef
-                    TransactionRef = ''.join(random.choices(string.ascii_uppercase + string.digits, k=9))
+                    # Get Transaction Status
+                    stage2Interaction = stage2(TransactionRef)
+                    if stage2Interaction["success"] == True and stage2Interaction["transactionstatus"] == "succeeded":
+                        cursor.execute("UPDATE dbo.Payment SET TransactionStatus = 1, TransactionDateTime = ?, TransactionCard = ?, TransactionTicket = ? WHERE Id = ?", stage2Interaction["transactiontime"], stage2Interaction["brand"], stage2Interaction["receipt"], row[0])
+                        datasplit = re.split('(\@RS)|(\@LF)|(\@SS)|(\@SM)|(\@SL)|(\@HT)|(\@AR)|(\@AM)|(\@@)|(       )', stage2Interaction["receipt"])
+                        datatoprint = list(filter(None, datasplit))
+                        PrintedLines = 0
+                        LineCounter = 0
+                        TabAmount = 0
+                        InternalNoteData = r"""{\rtf1\ansi\ansicpg1252\deff0\nouicompat\deflang1043\deflangfe1043\deftab709{\fonttbl{\f0\fswiss\fprq2\fcharset0 Tahoma;}}
+                        {\*\generator Riched20 10.0.22000}{\*\mmathPr\mnaryLim0\mdispDef1\mwrapIndent1440 }\viewkind4\uc1 
+                        \pard\widctlpar\slmult1\tqc\tx1985\tqr\tx3969\f0\fs18"""
+                        for x in datatoprint:
+                            print(LineCounter)
+                            print(x)
+                            if datatoprint[LineCounter] == '@RS':
+                                InternalNoteData += "\\b0\\fs18\ql "
+                                TabAmount = 0
+                            elif datatoprint[LineCounter] == '@LF':
+                                InternalNoteData += "\par\n"
+                                TabAmount = 0
+                            elif datatoprint[LineCounter] == '@SS':
+                                InternalNoteData += "\\b0\\fs18 "
+                            elif datatoprint[LineCounter] == '@SM':
+                                InternalNoteData += "\\b0\\fs20 "
+                            elif datatoprint[LineCounter] == '@SL':
+                                InternalNoteData += "\\b\\fs22 "
+                            elif datatoprint[LineCounter] == '@HT':
+                                InternalNoteData += "\\tab "
+                            elif datatoprint[LineCounter] == '@AR':
+                                if TabAmount == 0:
+                                    InternalNoteData += "\\tab\\tab "
+                                    TabAmount = 2
+                                elif TabAmount == 1:
+                                    InternalNoteData += "\\tab "
+                                    TabAmount = 2
+                                elif TabAmount == 2:
+                                    InternalNoteData += ""
+                            elif datatoprint[LineCounter] == '@AM':
+                                if TabAmount == 0:
+                                    InternalNoteData += "\\tab "
+                                    TabAmount = 1
+                                else:
+                                    InternalNoteData += ""
+                            elif datatoprint[LineCounter] == '@@':
+                                InternalNoteData += "@"
+                            elif datatoprint[LineCounter] == '       ':
+                                InternalNoteData += "\par\n"
+                                TabAmount = 0
+                            else:
+                                InternalNoteData += datatoprint[LineCounter]
+                            LineCounter = LineCounter + 1
+                        InternalNoteData += "}"
+                        print(InternalNoteData)
+                        cursor.execute("UPDATE dbo.Document SET CardTerminalReceipt = ? WHERE Id = ?", InternalNoteData, row[4])
+                        cnxn.commit()
+                        break
+                    
+                    elif stage2Interaction["success"] == True and stage2Interaction["transactionstatus"] == "inprogressnoinfo":
+                        cursor.execute("UPDATE dbo.Payment SET TransactionStatus = 2 WHERE Id = ?", row[0])
+                        cnxn.commit()
 
-                    # Create Signature
-                    SignatureData = f"0;2;{str(os.environ['MijnSepayUsername'])};{str(int(os.environ['SID']))};{TransactionRef};{str(row[0])};{ConvertedAmount};"
-                    SignatureSign = pkey.sign(SignatureData.encode(), padding.PKCS1v15(), hashes.SHA256())
-
-                    RequestResult = zeepclient.service.StartTransaction(key_index=0, version="2", login=os.environ['MijnSepayUsername'], sid=int(os.environ['SID']), transactionref=TransactionRef, merchantref=str(row[0]), amount=ConvertedAmount, signature=SignatureSign)
-
-                    ResponseSignatureData = f"{RequestResult['key_index']};{RequestResult['version']};{RequestResult['login']};{RequestResult['sid']};{RequestResult['transactionref']};{RequestResult['merchantref']};{RequestResult['amount']};{RequestResult['status']};{RequestResult['message']};{RequestResult['terminalip']};{RequestResult['terminalport']}"
-                    try:
-                        sepaypubkey.verify(RequestResult["signature"], str.encode(ResponseSignatureData), padding.PKCS1v15(), hashes.SHA256())
-                    except cryptography.exceptions.InvalidSignature:
-                        print("Received signature invalid.")
+                    elif stage2Interaction["success"] == True and stage2Interaction["transactionstatus"] == "inprogress":
+                        try:
+                            if stage2Interaction["receipt"] != None:
+                                cursor.execute("UPDATE dbo.Payment SET TransactionStatus = 2, TransactionDateTime = ?, TransactionCard = ?, TransactionTicket = ? WHERE Id = ?", stage2Interaction["transactiontime"], stage2Interaction["brand"], stage2Interaction["receipt"], row[0])
+                                datasplit = re.split('(\@RS)|(\@LF)|(\@SS)|(\@SM)|(\@SL)|(\@HT)|(\@AR)|(\@AM)|(\@@)|(       )', stage2Interaction["receipt"])
+                                datatoprint = list(filter(None, datasplit))
+                                PrintedLines = 0
+                                LineCounter = 0
+                                TabAmount = 0
+                                InternalNoteData = r"""{\rtf1\ansi\ansicpg1252\deff0\nouicompat\deflang1043\deflangfe1043\deftab709{\fonttbl{\f0\fswiss\fprq2\fcharset0 Tahoma;}}
+                                {\*\generator Riched20 10.0.22000}{\*\mmathPr\mnaryLim0\mdispDef1\mwrapIndent1440 }\viewkind4\uc1 
+                                \pard\widctlpar\slmult1\tqc\tx1985\tqr\tx3969\f0\fs18"""
+                                for x in datatoprint:
+                                    print(LineCounter)
+                                    print(x)
+                                    if datatoprint[LineCounter] == '@RS':
+                                        InternalNoteData += "\\b0\\fs18\ql "
+                                        TabAmount = 0
+                                    elif datatoprint[LineCounter] == '@LF':
+                                        InternalNoteData += "\par\n"
+                                        TabAmount = 0
+                                    elif datatoprint[LineCounter] == '@SS':
+                                        InternalNoteData += "\\b0\\fs18 "
+                                    elif datatoprint[LineCounter] == '@SM':
+                                        InternalNoteData += "\\b0\\fs20 "
+                                    elif datatoprint[LineCounter] == '@SL':
+                                        InternalNoteData += "\\b\\fs22 "
+                                    elif datatoprint[LineCounter] == '@HT':
+                                        InternalNoteData += "\\tab "
+                                    elif datatoprint[LineCounter] == '@AR':
+                                        if TabAmount == 0:
+                                            InternalNoteData += "\\tab\\tab "
+                                            TabAmount = 2
+                                        elif TabAmount == 1:
+                                            InternalNoteData += "\\tab "
+                                            TabAmount = 2
+                                        elif TabAmount == 2:
+                                            InternalNoteData += ""
+                                    elif datatoprint[LineCounter] == '@AM':
+                                        if TabAmount == 0:
+                                            InternalNoteData += "\\tab "
+                                            TabAmount = 1
+                                        else:
+                                            InternalNoteData += ""
+                                    elif datatoprint[LineCounter] == '@@':
+                                        InternalNoteData += "@"
+                                    elif datatoprint[LineCounter] == '       ':
+                                        InternalNoteData += "\par\n"
+                                        TabAmount = 0
+                                    else:
+                                        InternalNoteData += datatoprint[LineCounter]
+                                    LineCounter = LineCounter + 1
+                                InternalNoteData += "}"
+                                print(InternalNoteData)
+                                cursor.execute("UPDATE dbo.Document SET CardTerminalReceipt = ? WHERE Id = ?", InternalNoteData, row[4])
+                                cnxn.commit()
+                            else:
+                                cursor.execute("UPDATE dbo.Payment SET TransactionStatus = 2, TransactionDateTime = ?, TransactionCard = ? WHERE Id = ?", stage2Interaction["transactiontime"], stage2Interaction["brand"], row[0])
+                                cnxn.commit()
+                        except KeyError:
+                                cursor.execute("UPDATE dbo.Payment SET TransactionStatus = 2, TransactionDateTime = ?, TransactionCard = ? WHERE Id = ?", stage2Interaction["transactiontime"], stage2Interaction["brand"], row[0])
+                                cnxn.commit()
+                    
+                    elif stage2Interaction["success"] == True and stage2Interaction["transactionstatus"] == "failed":
+                        cursor.execute("UPDATE dbo.Payment SET TransactionStatus = 3, TransactionError = ? WHERE Id = ?", stage2Interaction["error"], row[0])
+                        cnxn.commit()
                         break
 
-                    # Check status code and retry if neccesary 
-                    match RequestResult["status"]:
-                        case "00":
-                            if os.environ['Messaging'] == 'msteams':
-                                payload = json.dumps('"{"@type":"MessageCard","@context":"http://schema.org/extensions","themeColor":"f7dda4","summary":"'+_("New Transaction")+': '+TransactionRef+'","title":"'+_("New Transaction")+': '+TransactionRef+'","sections":[{"facts":[{"name":"'+_("Transaction ID")+'","value":"'+TransactionRef+'"},{"name":"SID","value":"'+os.environ['SID']+'"},{"name":"'+_("Payment ID")+'","value":"'+str(row[0])+'"},{"name":"'+_("Amount")+'","value":"'+ConvertedAmount+'"}]}]}')
-                                response = requests.request("POST", os.environ['MSTeamsURL'], headers=headers, data=payload)
-                            break
-                        case "01":
-                            print("Some of the required fields are missing: "+ RequestResult['message'])
-                            break
-                        case "02":
-                            print("Signature failed")
-                            break
-                        case "04":
-                            print("Invalid parameters, retrying...")
-                            continue
-                        case "06":
-                            print("Duplicate request")
-                            break
-                        case "07":
-                            print("Terminal not active or not enabled and/or authorized for transactions through WECR")
-                            break
-                        case "11":
-                            print("Pending request for this terminal.")
-                            break
-                        case "99":
-                            print("Undefined error")
-                            break
+                    elif stage2Interaction["success"] == True and stage2Interaction["transactionstatus"] == "canceled":
+                        cursor.execute("UPDATE dbo.Payment SET TransactionStatus = 5 WHERE Id = ?", row[0])
+                        cnxn.commit()
+                        break
 
-                # Get Transaction Status
-                SignatureData = f"0;2;{str(os.environ['MijnSepayUsername'])};{str(int(os.environ['SID']))};{TransactionRef}"
-                SignatureSign = pkey.sign(SignatureData.encode(), padding.PKCS1v15(), hashes.SHA256())
-
-                if RequestResult["status"] == "00":
-
-                    while True:
-                        time.sleep(2)
-
-                        RequestResult = zeepclient.service.StartTransaction(key_index=0, version="2", login=os.environ['MijnSepayUsername'], sid=int(os.environ['SID']), transactionref=TransactionRef, signature=SignatureSign)
-
-                        ResponseSignatureData = f"{RequestResult['key_index']};{RequestResult['version']};{RequestResult['login']};{RequestResult['sid']};{RequestResult['transactionref']};{RequestResult['merchantref']};{RequestResult['amount']};{RequestResult['transactiontime']};{RequestResult['transactionerror']};{RequestResult['transactionresult']};{RequestResult['status']};{RequestResult['message']};{RequestResult['brand']};{RequestResult['ticket']}"
-                        try:
-                            sepaypubkey.verify(RequestResult["signature"], str.encode(ResponseSignatureData), padding.PKCS1v15(), hashes.SHA256())
-                        except cryptography.exceptions.InvalidSignature:
-                            print("Received signature invalid.")
-                            break
-
-                        match RequestResult["status"]:
-                            case "00":
-                                if os.environ['Messaging'] == 'msteams':
-                                    encodedurl = urllib.parse.quote(RequestResult["ticket"])
-                                    payload = json.dumps('{"@type":"MessageCard","@context":"http://schema.org/extensions","themeColor":"f7dda4","summary":"'+_("Transaction succeeded")+': '+TransactionRef+'","title":'+_("Transaction succeeded")+': '+TransactionRef+'","sections":[{"facts":[{"name":"'+_("Transaction ID")+'","value":"'+TransactionRef+'"},{"name":"SID","value":"'+os.environ['SID']+'"},{"name":"'+_("Payment ID")+'","value":"'+str(row[0])+'"},{"name":"'+_("Amount")+'","value":"'+ConvertedAmount+'"},{"name":"'+_("Amount")+'","value":"'+RequestResult["transactiontime"]+'"},{"name":"'+_("Brand")+'","value":"'+RequestResult["brand"]+'"}]}],"potentialAction":[{"@type":"OpenUri","name":"'+_("Print Receipt")+'","targets":[{"os":"windows","uri":"http://127.0.0.1:6543/?data='+encodedurl+'"}]}]}')
-                                    response = requests.request("POST", os.environ['MSTeamsURL'], headers=headers, data=payload)
-                                break
-                            case "01":
-                                print("Some of the required fields are missing: "+ RequestResult['message'])
-                                break
-                            case "02":
-                                print("Signature failed")
-                                break
-                            case "04":
-                                print("Invalid parameters, retrying...")
-                                continue
-                            case "07":
-                                print("Terminal not active or not enabled and/or authorized for transactions through WECR")
-                                break
-                            case "13":
-                                print("Transaction failed")
-                                if os.environ['Messaging'] == 'msteams':
-                                    encodedurl = urllib.parse.quote(RequestResult["ticket"])
-                                    payload = json.dumps('{"@type":"MessageCard","@context":"http://schema.org/extensions","themeColor":"f7dda4","summary":"'+_("Transaction Failed")+': '+TransactionRef+'","title":"'+_("Transaction Failed")+': '+TransactionRef+'","sections":[{"facts":[{"name":"'+_("Transaction ID")+'","value":"'+TransactionRef+'"},{"name":"SID","value":"'+str(int(os.environ['SID']))+'"},{"name":"'+_("Payment ID")+'","value":"'+str(row[0])+'"},{"name":"'+_("Amount")+'","value":"'+ConvertedAmount+'"},{"name":"'+_("Date")+'","value":"'+RequestResult["transactiontime"]+'"},{"name":"'+_("Brand")+'","value":"'+RequestResult["brand"]+'"},{"name":"'+_("Message")+'","value":"'+RequestResult["message"]+'"},{"name":"'+_("Reason")+'","value":"'+TransactionerrorCodes[str(int(RequestResult["transactionerror"]))]+'"}]}]}')
-                                    response = requests.request("POST", os.environ['MSTeamsURL'], headers=headers, data=payload)
-                                break
-                            case "14":
-                                print("This transaction was canceled. Reason:" + RequestResult['message'])
-                                if os.environ['Messaging'] == 'msteams':
-                                    encodedurl = urllib.parse.quote(RequestResult["ticket"])
-                                    payload = json.dumps('{"@type":"MessageCard","@context":"http://schema.org/extensions","themeColor":"f7dda4","summary":"'+_("Transaction Canceled")+': '+TransactionRef+'","title":"'+_("Transaction Canceled")+': '+TransactionRef+'","sections":[{"facts":[{"name":"'+_("Transaction ID")+'","value":"'+TransactionRef+'"},{"name":"SID","value":"'+str(int(os.environ['SID']))+'"},{"name":"'+_("Payment ID")+'","value":"'+str(row[0])+'"},{"name":"'+_("Amount")+'","value":"'+ConvertedAmount+'"},{"name":"'+_("Date")+'","value":"'+RequestResult["transactiontime"]+'"},{"name":"'+_("Message")+'","value":"'+RequestResult["message"]+'"}]}]}')
-                                    response = requests.request("POST", os.environ['MSTeamsURL'], headers=headers, data=payload)
-                                break
-                            case "15":
-                                print("Transaction is not finished and has not been canceled yet")
-                                continue
-                            case "17":
-                                print("Transaction already in progress, cannot be canceled anymore")
-                                continue
-                            case "99":
-                                print("Undefined error")
-                                break
+                    elif stage2Interaction["success"] == False:
+                        cursor.execute("UPDATE dbo.Payment SET TransactionStatus = 4 WHERE Id = ?", row[0])
+                        cnxn.commit()
+                        break
