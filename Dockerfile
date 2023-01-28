@@ -1,5 +1,5 @@
 #Build container
-FROM python:3.11.1-bullseye@sha256:3f6813d830f7d841ef03d6a27e276c50b6eefbfe035f8cd81936a4d2b04361b9 AS builder
+FROM python:3.10.9-bullseye@sha256:692a643c990cd86daf8cb7f506ec0a3f3ef561464efe4e63b6d74df0f86dfa83 AS builder
 
 #Run apt update && apt install and build pyodbc and cffi as wheels
 WORKDIR /
@@ -9,7 +9,7 @@ RUN apt-get update &&\
     python -m pip wheel --no-binary :all: --wheel-dir /tmp/wheelhouse -r requirements-build.txt
 
 #App container
-FROM python:3.11.1-alpine3.17@sha256:ed092003fe2c497ba66569dae9fa037af68e13afb3e51efa5b760bd62e6b4ae6
+FROM python:3.10.9-alpine3.17@sha256:128e8b13a45508eac9956717ed1e3c86d36463317cabef782da70d5d74cb338e
 
 ENV ACCEPT_EULA=Y
 #Run apk add with no caching && install MS SQL ODBC Driver v18
