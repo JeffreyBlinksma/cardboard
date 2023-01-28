@@ -121,6 +121,7 @@ while True:
                                 TabAmount = 0
                             elif datatoprint[LineCounter] == '@LF':
                                 InternalNoteData += "\par\n"
+                                TabAmount = 0
                             elif datatoprint[LineCounter] == '@SS':
                                 InternalNoteData += "\\b0\\fs18 "
                             elif datatoprint[LineCounter] == '@SM':
@@ -210,6 +211,7 @@ while True:
                                         InternalNoteData += "@"
                                     elif datatoprint[LineCounter] == '       ':
                                         InternalNoteData += "\par\n"
+                                        TabAmount = 0
                                     else:
                                         InternalNoteData += datatoprint[LineCounter]
                                     LineCounter = LineCounter + 1
