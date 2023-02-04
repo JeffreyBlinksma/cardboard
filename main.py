@@ -67,24 +67,24 @@ def receiptGeneratorA4(ticket):
     datatoprint = list(filter(None, datasplit))
     LineCounter = 0
     TabAmount = 0
-    InternalNoteData = r"""{\rtf1\ansi\ansicpg1252\deff0\nouicompat\deflang1043\deflangfe1043\deftab709{\fonttbl{\f0\fswiss\fprq2\fcharset0 Tahoma;}}
+    InternalNoteData = r"""{\rtf1\ansi\ansicpg1252\deff0\nouicompat\deflang1043\deflangfe1043\deftab709{\fonttbl{\f0\fswiss\fprq2\fcharset0 Arial;}}
     {\*\generator Riched20 10.0.22000}{\*\mmathPr\mnaryLim0\mdispDef1\mwrapIndent1440 }\viewkind4\uc1 
-    \pard\widctlpar\slmult1\tqc\tx1715\tqr\tx3430\f0\fs18"""
+    \pard\widctlpar\slmult1\tqc\tx1715\tqr\tx3430\f0\fs16"""
     for x in datatoprint:
         print(LineCounter)
         print(x)
         if datatoprint[LineCounter] == '@RS':
-            InternalNoteData += "\\b0\\fs18\ql "
+            InternalNoteData += "\\b0\\fs16\ql "
             TabAmount = 0
         elif datatoprint[LineCounter] == '@LF':
             InternalNoteData += "\par\n"
             TabAmount = 0
         elif datatoprint[LineCounter] == '@SS':
-            InternalNoteData += "\\b0\\fs18 "
+            InternalNoteData += "\\b0\\fs16 "
         elif datatoprint[LineCounter] == '@SM':
-            InternalNoteData += "\\b0\\fs20 "
+            InternalNoteData += "\\b\\fs16 "
         elif datatoprint[LineCounter] == '@SL':
-            InternalNoteData += "\\b\\fs22 "
+            InternalNoteData += "\\b\\fs16 "
         elif datatoprint[LineCounter] == '@HT':
             InternalNoteData += "\\tab "
         elif datatoprint[LineCounter] == '@AR':
