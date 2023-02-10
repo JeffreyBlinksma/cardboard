@@ -171,6 +171,17 @@ cursor.execute("""BEGIN TRANSACTION
                         TransactionTerminalIP varchar(15) NULL,
                         TransactionTerminalPort int NULL""")
 cnxn.commit()
+cursor.execute("""BEGIN TRANSACTION
+                    IF NOT EXISTS (
+                        SELECT * 
+                        FROM   sys.columns 
+                        WHERE  object_id = OBJECT_ID(N'dbo.Document') 
+                        AND name = 'CardTerminalReceipt'
+                    )
+                    ALTER TABLE dbo.Payment ADD
+                        CardTerminalReceipt nvarchar(MAX) NULL,
+                        CardTerminalInvoiceReceipt nvarchar(MAX) NULL""")
+cnxn.commit()
 
 while True:
 
