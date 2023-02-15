@@ -9,6 +9,112 @@ import gettext
 from cardterminals.sepay import *
 import re
 
+# Functions
+def receiptGenerator80mm(ticket):
+    datasplit = re.split('(\@RS)|(\@LF)|(\@SS)|(\@SM)|(\@SL)|(\@HT)|(\@AR)|(\@AM)|(\@@)|(       )', ticket)
+    datatoprint = list(filter(None, datasplit))
+    LineCounter = 0
+    TabAmount = 0
+    InternalNoteData = r"""{\rtf1\ansi\ansicpg1252\deff0\nouicompat\deflang1043\deflangfe1043\deftab709{\fonttbl{\f0\fswiss\fprq2\fcharset0 Tahoma;}}
+    {\*\generator Riched20 10.0.22000}{\*\mmathPr\mnaryLim0\mdispDef1\mwrapIndent1440 }\viewkind4\uc1 
+    \pard\widctlpar\slmult1\tqc\tx1985\tqr\tx3969\f0\fs18"""
+    for x in datatoprint:
+        print(LineCounter)
+        print(x)
+        if datatoprint[LineCounter] == '@RS':
+            InternalNoteData += "\\b0\\fs18\ql "
+            TabAmount = 0
+        elif datatoprint[LineCounter] == '@LF':
+            InternalNoteData += "\par\n"
+            TabAmount = 0
+        elif datatoprint[LineCounter] == '@SS':
+            InternalNoteData += "\\b0\\fs18 "
+        elif datatoprint[LineCounter] == '@SM':
+            InternalNoteData += "\\b0\\fs20 "
+        elif datatoprint[LineCounter] == '@SL':
+            InternalNoteData += "\\b\\fs22 "
+        elif datatoprint[LineCounter] == '@HT':
+            InternalNoteData += "\\tab "
+        elif datatoprint[LineCounter] == '@AR':
+            if TabAmount == 0:
+                InternalNoteData += "\\tab\\tab "
+                TabAmount = 2
+            elif TabAmount == 1:
+                InternalNoteData += "\\tab "
+                TabAmount = 2
+            elif TabAmount == 2:
+                InternalNoteData += ""
+        elif datatoprint[LineCounter] == '@AM':
+            if TabAmount == 0:
+                InternalNoteData += "\\tab "
+                TabAmount = 1
+            else:
+                InternalNoteData += ""
+        elif datatoprint[LineCounter] == '@@':
+            InternalNoteData += "@"
+        elif datatoprint[LineCounter] == '       ':
+            InternalNoteData += "\par\n"
+            TabAmount = 0
+        else:
+            InternalNoteData += datatoprint[LineCounter]
+        LineCounter = LineCounter + 1
+    InternalNoteData += "}"
+    print(InternalNoteData)
+    return InternalNoteData
+
+def receiptGeneratorA4(ticket):
+    datasplit = re.split('(\@RS)|(\@LF)|(\@SS)|(\@SM)|(\@SL)|(\@HT)|(\@AR)|(\@AM)|(\@@)|(       )', ticket)
+    datatoprint = list(filter(None, datasplit))
+    LineCounter = 0
+    TabAmount = 0
+    InternalNoteData = r"""{\rtf1\ansi\ansicpg1252\deff0\nouicompat\deflang1043\deflangfe1043\deftab709{\fonttbl{\f0\fswiss\fprq2\fcharset0 Arial;}}
+    {\*\generator Riched20 10.0.22000}{\*\mmathPr\mnaryLim0\mdispDef1\mwrapIndent1440 }\viewkind4\uc1 
+    \pard\widctlpar\slmult1\tqc\tx1715\tqr\tx3430\f0\fs16"""
+    for x in datatoprint:
+        print(LineCounter)
+        print(x)
+        if datatoprint[LineCounter] == '@RS':
+            InternalNoteData += "\\b0\\fs16\ql "
+            TabAmount = 0
+        elif datatoprint[LineCounter] == '@LF':
+            InternalNoteData += "\par\n"
+            TabAmount = 0
+        elif datatoprint[LineCounter] == '@SS':
+            InternalNoteData += "\\b0\\fs16 "
+        elif datatoprint[LineCounter] == '@SM':
+            InternalNoteData += "\\b\\fs16 "
+        elif datatoprint[LineCounter] == '@SL':
+            InternalNoteData += "\\b\\fs16 "
+        elif datatoprint[LineCounter] == '@HT':
+            InternalNoteData += "\\tab "
+        elif datatoprint[LineCounter] == '@AR':
+            if TabAmount == 0:
+                InternalNoteData += "\\tab\\tab "
+                TabAmount = 2
+            elif TabAmount == 1:
+                InternalNoteData += "\\tab "
+                TabAmount = 2
+            elif TabAmount == 2:
+                InternalNoteData += ""
+        elif datatoprint[LineCounter] == '@AM':
+            if TabAmount == 0:
+                InternalNoteData += "\\tab "
+                TabAmount = 1
+            else:
+                InternalNoteData += ""
+        elif datatoprint[LineCounter] == '@@':
+            InternalNoteData += "@"
+        elif datatoprint[LineCounter] == '       ':
+            InternalNoteData += "\par\n"
+            TabAmount = 0
+        else:
+            InternalNoteData += datatoprint[LineCounter]
+        LineCounter = LineCounter + 1
+    InternalNoteData += "}"
+    print(InternalNoteData)
+    return InternalNoteData
+
+
 # Set variables
 StoredID = 0
 
@@ -65,6 +171,17 @@ cursor.execute("""BEGIN TRANSACTION
                         TransactionTerminalIP varchar(15) NULL,
                         TransactionTerminalPort int NULL""")
 cnxn.commit()
+cursor.execute("""BEGIN TRANSACTION
+                    IF NOT EXISTS (
+                        SELECT * 
+                        FROM   sys.columns 
+                        WHERE  object_id = OBJECT_ID(N'dbo.Document') 
+                        AND name = 'CardTerminalReceipt'
+                    )
+                    ALTER TABLE dbo.Payment ADD
+                        CardTerminalReceipt nvarchar(MAX) NULL,
+                        CardTerminalInvoiceReceipt nvarchar(MAX) NULL""")
+cnxn.commit()
 
 while True:
 
@@ -105,57 +222,9 @@ while True:
                     stage2Interaction = stage2(TransactionRef)
                     if stage2Interaction["success"] == True and stage2Interaction["transactionstatus"] == "succeeded":
                         cursor.execute("UPDATE dbo.Payment SET TransactionStatus = 1, TransactionDateTime = ?, TransactionCard = ?, TransactionTicket = ? WHERE Id = ?", stage2Interaction["transactiontime"], stage2Interaction["brand"], stage2Interaction["receipt"], row[0])
-                        datasplit = re.split('(\@RS)|(\@LF)|(\@SS)|(\@SM)|(\@SL)|(\@HT)|(\@AR)|(\@AM)|(\@@)|(       )', stage2Interaction["receipt"])
-                        datatoprint = list(filter(None, datasplit))
-                        PrintedLines = 0
-                        LineCounter = 0
-                        TabAmount = 0
-                        InternalNoteData = r"""{\rtf1\ansi\ansicpg1252\deff0\nouicompat\deflang1043\deflangfe1043\deftab709{\fonttbl{\f0\fswiss\fprq2\fcharset0 Tahoma;}}
-                        {\*\generator Riched20 10.0.22000}{\*\mmathPr\mnaryLim0\mdispDef1\mwrapIndent1440 }\viewkind4\uc1 
-                        \pard\widctlpar\slmult1\tqc\tx1985\tqr\tx3969\f0\fs18"""
-                        for x in datatoprint:
-                            print(LineCounter)
-                            print(x)
-                            if datatoprint[LineCounter] == '@RS':
-                                InternalNoteData += "\\b0\\fs18\ql "
-                                TabAmount = 0
-                            elif datatoprint[LineCounter] == '@LF':
-                                InternalNoteData += "\par\n"
-                                TabAmount = 0
-                            elif datatoprint[LineCounter] == '@SS':
-                                InternalNoteData += "\\b0\\fs18 "
-                            elif datatoprint[LineCounter] == '@SM':
-                                InternalNoteData += "\\b0\\fs20 "
-                            elif datatoprint[LineCounter] == '@SL':
-                                InternalNoteData += "\\b\\fs22 "
-                            elif datatoprint[LineCounter] == '@HT':
-                                InternalNoteData += "\\tab "
-                            elif datatoprint[LineCounter] == '@AR':
-                                if TabAmount == 0:
-                                    InternalNoteData += "\\tab\\tab "
-                                    TabAmount = 2
-                                elif TabAmount == 1:
-                                    InternalNoteData += "\\tab "
-                                    TabAmount = 2
-                                elif TabAmount == 2:
-                                    InternalNoteData += ""
-                            elif datatoprint[LineCounter] == '@AM':
-                                if TabAmount == 0:
-                                    InternalNoteData += "\\tab "
-                                    TabAmount = 1
-                                else:
-                                    InternalNoteData += ""
-                            elif datatoprint[LineCounter] == '@@':
-                                InternalNoteData += "@"
-                            elif datatoprint[LineCounter] == '       ':
-                                InternalNoteData += "\par\n"
-                                TabAmount = 0
-                            else:
-                                InternalNoteData += datatoprint[LineCounter]
-                            LineCounter = LineCounter + 1
-                        InternalNoteData += "}"
-                        print(InternalNoteData)
-                        cursor.execute("UPDATE dbo.Document SET CardTerminalReceipt = ? WHERE Id = ?", InternalNoteData, row[4])
+                        receipt80mm = receiptGenerator80mm(stage2Interaction["receipt"])
+                        receiptA4 = receiptGeneratorA4(stage2Interaction["receipt"])
+                        cursor.execute("UPDATE dbo.Document SET CardTerminalReceipt = ?, CardTerminalInvoiceReceipt = ? WHERE Id = ?", receipt80mm, receiptA4, row[4])
                         cnxn.commit()
                         break
                     
@@ -167,57 +236,9 @@ while True:
                         try:
                             if stage2Interaction["receipt"] != None:
                                 cursor.execute("UPDATE dbo.Payment SET TransactionStatus = 2, TransactionDateTime = ?, TransactionCard = ?, TransactionTicket = ? WHERE Id = ?", stage2Interaction["transactiontime"], stage2Interaction["brand"], stage2Interaction["receipt"], row[0])
-                                datasplit = re.split('(\@RS)|(\@LF)|(\@SS)|(\@SM)|(\@SL)|(\@HT)|(\@AR)|(\@AM)|(\@@)|(       )', stage2Interaction["receipt"])
-                                datatoprint = list(filter(None, datasplit))
-                                PrintedLines = 0
-                                LineCounter = 0
-                                TabAmount = 0
-                                InternalNoteData = r"""{\rtf1\ansi\ansicpg1252\deff0\nouicompat\deflang1043\deflangfe1043\deftab709{\fonttbl{\f0\fswiss\fprq2\fcharset0 Tahoma;}}
-                                {\*\generator Riched20 10.0.22000}{\*\mmathPr\mnaryLim0\mdispDef1\mwrapIndent1440 }\viewkind4\uc1 
-                                \pard\widctlpar\slmult1\tqc\tx1985\tqr\tx3969\f0\fs18"""
-                                for x in datatoprint:
-                                    print(LineCounter)
-                                    print(x)
-                                    if datatoprint[LineCounter] == '@RS':
-                                        InternalNoteData += "\\b0\\fs18\ql "
-                                        TabAmount = 0
-                                    elif datatoprint[LineCounter] == '@LF':
-                                        InternalNoteData += "\par\n"
-                                        TabAmount = 0
-                                    elif datatoprint[LineCounter] == '@SS':
-                                        InternalNoteData += "\\b0\\fs18 "
-                                    elif datatoprint[LineCounter] == '@SM':
-                                        InternalNoteData += "\\b0\\fs20 "
-                                    elif datatoprint[LineCounter] == '@SL':
-                                        InternalNoteData += "\\b\\fs22 "
-                                    elif datatoprint[LineCounter] == '@HT':
-                                        InternalNoteData += "\\tab "
-                                    elif datatoprint[LineCounter] == '@AR':
-                                        if TabAmount == 0:
-                                            InternalNoteData += "\\tab\\tab "
-                                            TabAmount = 2
-                                        elif TabAmount == 1:
-                                            InternalNoteData += "\\tab "
-                                            TabAmount = 2
-                                        elif TabAmount == 2:
-                                            InternalNoteData += ""
-                                    elif datatoprint[LineCounter] == '@AM':
-                                        if TabAmount == 0:
-                                            InternalNoteData += "\\tab "
-                                            TabAmount = 1
-                                        else:
-                                            InternalNoteData += ""
-                                    elif datatoprint[LineCounter] == '@@':
-                                        InternalNoteData += "@"
-                                    elif datatoprint[LineCounter] == '       ':
-                                        InternalNoteData += "\par\n"
-                                        TabAmount = 0
-                                    else:
-                                        InternalNoteData += datatoprint[LineCounter]
-                                    LineCounter = LineCounter + 1
-                                InternalNoteData += "}"
-                                print(InternalNoteData)
-                                cursor.execute("UPDATE dbo.Document SET CardTerminalReceipt = ? WHERE Id = ?", InternalNoteData, row[4])
+                                receipt80mm = receiptGenerator80mm(stage2Interaction["receipt"])
+                                receiptA4 = receiptGeneratorA4(stage2Interaction["receipt"])
+                                cursor.execute("UPDATE dbo.Document SET CardTerminalReceipt = ?, CardTerminalInvoiceReceipt = ? WHERE Id = ?", receipt80mm, receiptA4, row[4])
                                 cnxn.commit()
                             else:
                                 cursor.execute("UPDATE dbo.Payment SET TransactionStatus = 2, TransactionDateTime = ?, TransactionCard = ? WHERE Id = ?", stage2Interaction["transactiontime"], stage2Interaction["brand"], row[0])
