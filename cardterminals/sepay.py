@@ -11,6 +11,12 @@ from dateutil import parser
 import hashlib
 import base64
 
+# Set up gettext for the domain errors with the locale directory in the root of the project with the locale set in env variable lang
+import gettext
+gettext.bindtextdomain("errors", os.path.join(os.path.dirname(__file__), "..", "locales"))
+gettext.textdomain("errors")
+_ = gettext.gettext
+
 # Import private key
 with open("/run/secrets/sepaykeyfile", "rb") as f:
 #with open("robinsmediateam-sepay-x5.pem", "rb") as f:
@@ -105,7 +111,11 @@ def stage2(TransactionRef):
                 return {"success": False, "inform": True, "error": "Terminal not active or not enabled and/or authorized for transactions through WECR"}
             case "13":
                 print("Transaction failed")
-                return {"success": True, "transactionstatus": "failed", "error": stage2Request['transactionerror']}
+                if stage2Request['transactionresult'] == None:
+                    return {"success": True, "transactionstatus": "failed", "error": _(stage2Request['transactionerror'])}
+                else:
+                    errorString = _(stage2Request['transactionerror']) + " " + _(stage2Request['transactionresult'])
+                    return {"success": True, "transactionstatus": "failed", "error": errorString}
             case "14":
                 print("This transaction was canceled. Reason:" + stage2Request['message'])
                 return {"success": True, "transactionstatus": "canceled"}
@@ -122,4 +132,3 @@ def stage2(TransactionRef):
 # convert iso time to datetime using dateutil
 def iso_to_datetime(iso_time):
     return parser.parse(iso_time)
-

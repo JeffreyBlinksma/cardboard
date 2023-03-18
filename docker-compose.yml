@@ -1,18 +1,18 @@
 version: '3.4'
 services:
   cardboard:
-    image: registry.robinsmediateam.dev/cardboard:latest
+    image: ghcr.io/robinsmediateam/cardboard:latest
     restart: always
     environment:
       - MijnSepayUsername=example@example.com
       - SID=1234567
       - PaymentID=7
-      - SQLServer="127.0.0.1\ARONIUM"
+      - SQLServer=tcp:192.168.223.2\ARONIUM
       - SQLDatabase=aroniumdb
       - SQLUsername=username
-      - SQLPassword="password"
-      - Messaging=msteams
-      - MSTeamsURL="incomingwebhookurl"
+      - SQLPassword=password
+      - DEBUG=true
+      - LANG=nl-NL
     secrets:
       - keyfile
 
