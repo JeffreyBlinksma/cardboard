@@ -1,0 +1,169 @@
+# Cardboard
+msgid ""
+msgstr ""
+"Language: en\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+
+msgid "0"
+msgstr "Transaction succeeded"
+
+msgid "000"
+msgstr "Transaction succeeded"
+
+msgid "100"
+msgstr "Do not honour"
+
+msgid "101"
+msgstr "Expired card"
+
+msgid "104"
+msgstr "Restricted card"
+
+msgid "105"
+msgstr "Check security settings of acquirer"
+
+msgid "106"
+msgstr "Allowable PIN tries exceeded"
+
+msgid "107"
+msgstr "Refer to Card Issuer"
+
+msgid "109"
+msgstr "Invalid Merchant"
+
+msgid "110"
+msgstr "Invalid Amount"
+
+msgid "111"
+msgstr "Invalid Card Number"
+
+msgid "116"
+msgstr "Not sufficient funds"
+
+msgid "117"
+msgstr "Incorrect PIN"
+
+msgid "119"
+msgstr "Transaction not permitted to the customer"
+
+msgid "120"
+msgstr "Transaction not permitted to the POS device"
+
+msgid "121"
+msgstr "Exceeds withdrawal amount limit"
+
+msgid "123"
+msgstr "Exceeds withdrawal frequency limit"
+
+msgid "128"
+msgstr "PIN key synch error"
+
+msgid "141"
+msgstr "Refund declined"
+
+msgid "181"
+msgstr "Card blocked"
+
+msgid "185"
+msgstr "Product(s) not allowed"
+
+msgid "191"
+msgstr "Unknown transponder"
+
+msgid "200"
+msgstr "Pick-up card Declined"
+
+msgid "2004"
+msgstr "Check ACQ"
+
+msgid "202"
+msgstr "Suspected fraud"
+
+msgid "2033"
+msgstr "Check ACQ"
+
+msgid "204"
+msgstr "Restricted card Declined - Capture"
+
+msgid "2061"
+msgstr "Check ACQ"
+
+msgid "2075"
+msgstr "Check ACQ"
+
+msgid "208"
+msgstr "Lost Card Declined - Capture"
+
+msgid "209"
+msgstr "Stolen Card Declined - Capture"
+
+msgid "902"
+msgstr "Invalid transaction Failed"
+
+msgid "904"
+msgstr "Format error"
+
+msgid "907"
+msgstr "Card issuer or switch inoperative"
+
+msgid "908"
+msgstr "Destination not found Declined"
+
+msgid "909"
+msgstr "System Malfunction Declined"
+
+msgid "911"
+msgstr "Card issuer timed out Declined"
+
+msgid "912"
+msgstr "Card issuer unavailable Declined"
+
+msgid "913"
+msgstr "Technical failure"
+
+msgid "917"
+msgstr "MAC key synch error Declined"
+
+msgid "1803"
+msgstr "Time-Out"
+
+msgid "1804"
+msgstr "Transaction declined"
+
+msgid "1811"
+msgstr "Technical failure"
+
+msgid "1822"
+msgstr "Connection failure"
+
+msgid "1823"
+msgstr "Invalid answer"
+
+msgid "2621"
+msgstr "Canceled on PIN entry"
+
+msgid "2622"
+msgstr "Time-out on PIN entry"
+
+msgid "2623"
+msgstr "Declined by card"
+
+msgid "2625"
+msgstr "Corrupted response"
+
+msgid "2627"
+msgstr "Declined by host"
+
+msgid "2629"
+msgstr "Cancellation"
+
+msgid "3313"
+msgstr "MAC verification failure"
+
+msgid "4021"
+msgstr "Declined by card/terminal"
+
+msgid "4352"
+msgstr "Declined by card/terminal"
