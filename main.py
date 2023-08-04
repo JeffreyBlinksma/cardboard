@@ -169,18 +169,9 @@ cursor.execute("""BEGIN TRANSACTION
                         TransactionTicket nvarchar(MAX) NULL,
                         TransactionTerminalType nvarchar(512) NULL,
                         TransactionTerminalIP varchar(15) NULL,
-                        TransactionTerminalPort int NULL""")
-cnxn.commit()
-cursor.execute("""BEGIN TRANSACTION
-                    IF NOT EXISTS (
-                        SELECT * 
-                        FROM   sys.columns 
-                        WHERE  object_id = OBJECT_ID(N'dbo.Document') 
-                        AND name = 'CardTerminalReceipt'
-                    )
-                    ALTER TABLE dbo.Payment ADD
-                        CardTerminalReceipt nvarchar(MAX) NULL,
-                        CardTerminalInvoiceReceipt nvarchar(MAX) NULL""")
+                        TransactionTerminalPort int NULL,
+                        Transaction80mmReceipt nvarchar(MAX) NULL,
+                        TransactionInvoiceReceipt nvarchar(MAX) NULL""")
 cnxn.commit()
 
 while True:
@@ -221,10 +212,9 @@ while True:
                     # Get Transaction Status
                     stage2Interaction = stage2(TransactionRef)
                     if stage2Interaction["success"] == True and stage2Interaction["transactionstatus"] == "succeeded":
-                        cursor.execute("UPDATE dbo.Payment SET TransactionStatus = 1, TransactionDateTime = ?, TransactionCard = ?, TransactionTicket = ? WHERE Id = ?", stage2Interaction["transactiontime"], stage2Interaction["brand"], stage2Interaction["receipt"], row[0])
                         receipt80mm = receiptGenerator80mm(stage2Interaction["receipt"])
                         receiptA4 = receiptGeneratorA4(stage2Interaction["receipt"])
-                        cursor.execute("UPDATE dbo.Document SET CardTerminalReceipt = ?, CardTerminalInvoiceReceipt = ? WHERE Id = ?", receipt80mm, receiptA4, row[4])
+                        cursor.execute("UPDATE dbo.Payment SET TransactionStatus = 1, TransactionDateTime = ?, TransactionCard = ?, TransactionTicket = ?, Transaction80mmReceipt = ?, TransactionInvoiceReceipt = ? WHERE Id = ?", stage2Interaction["transactiontime"], stage2Interaction["brand"], stage2Interaction["receipt"], receipt80mm, receiptA4, row[0])
                         cnxn.commit()
                         break
                     
@@ -235,10 +225,9 @@ while True:
                     elif stage2Interaction["success"] == True and stage2Interaction["transactionstatus"] == "inprogress":
                         try:
                             if stage2Interaction["receipt"] != None:
-                                cursor.execute("UPDATE dbo.Payment SET TransactionStatus = 2, TransactionDateTime = ?, TransactionCard = ?, TransactionTicket = ? WHERE Id = ?", stage2Interaction["transactiontime"], stage2Interaction["brand"], stage2Interaction["receipt"], row[0])
                                 receipt80mm = receiptGenerator80mm(stage2Interaction["receipt"])
                                 receiptA4 = receiptGeneratorA4(stage2Interaction["receipt"])
-                                cursor.execute("UPDATE dbo.Document SET CardTerminalReceipt = ?, CardTerminalInvoiceReceipt = ? WHERE Id = ?", receipt80mm, receiptA4, row[4])
+                                cursor.execute("UPDATE dbo.Payment SET TransactionStatus = 2, TransactionDateTime = ?, TransactionCard = ?, TransactionTicket = ? WHERE Id = ?", stage2Interaction["transactiontime"], stage2Interaction["brand"], stage2Interaction["receipt"], receipt80mm, receiptA4, row[0])
                                 cnxn.commit()
                             else:
                                 cursor.execute("UPDATE dbo.Payment SET TransactionStatus = 2, TransactionDateTime = ?, TransactionCard = ? WHERE Id = ?", stage2Interaction["transactiontime"], stage2Interaction["brand"], row[0])
